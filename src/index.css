@@ -1,0 +1,15 @@
+/* Global styles for the Vite + React app */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
