@@ -1,150 +1,122 @@
-# Name Roulette - Vite + React Frontend
+# Restaurant Finder
 
-A beautiful React frontend featuring a spinning roulette wheel to randomly select names. Built with Vite for lightning-fast development and optimized builds. The application is designed to work with a backend service for managing names.
+A Python CLI application that finds restaurants using the Yelp API. Simply provide a location and get a list of top-rated restaurants with ratings, reviews, and contact information.
 
 ## Features
 
-- 🎯 **Interactive Roulette Wheel**: Smooth spinning animation with realistic physics
-- 📝 **Name Management**: Add, remove, and manage names dynamically
-- 🎨 **Beautiful UI**: Modern gradient design with glassmorphism effects
-- 📱 **Responsive Design**: Works on desktop and mobile devices
-- 🔄 **Backend Integration**: Ready to connect to your backend service
-- 🎉 **Winner Display**: Animated winner announcement
-- ⚡ **Vite Powered**: Lightning-fast development server and optimized builds
+- 🔍 **Location-based Search**: Find restaurants in any city or location
+- ⭐ **Rating & Reviews**: See star ratings and review counts
+- 📍 **Address Information**: Get full addresses for each restaurant
+- 💰 **Price Range**: View price indicators ($, $$, $$$, $$$$)
+- 🏷️ **Categories**: See restaurant categories and cuisine types
+- 🔗 **Direct Links**: Access Yelp pages for each restaurant
+- ⚙️ **Configurable**: Set default location and result limits
 
-## Quick Start
+## Setup
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+### 1. Install Dependencies
 
-2. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-3. **Open in Browser**
-   The app will automatically open at `http://localhost:3000`
+### 2. Get Yelp API Key
 
-## Backend Integration
+1. Go to [Yelp Developers](https://www.yelp.com/developers)
+2. Create an account and create a new app
+3. Copy your API key
 
-The app is designed to work with a backend service. It expects the following API endpoints:
+### 3. Create Environment File
 
-### API Endpoints
-
-- `GET /api/names` - Fetch all names
-- `POST /api/names` - Add a new name
-- `DELETE /api/names` - Remove a name
-
-### Environment Configuration
-
-Create a `.env` file in the root directory:
+Create a `.env` file in the project root:
 
 ```env
-REACT_APP_API_URL=http://localhost:8000
+YELP_API_KEY=your_actual_yelp_api_key_here
+DEFAULT_LOCATION=Raleigh, NC
 ```
 
-### API Response Format
+Replace `your_actual_yelp_api_key_here` with your actual Yelp API key.
 
-**GET /api/names**
-```json
-{
-  "names": ["Alice Johnson", "Bob Smith", "Carol Davis"]
-}
-```
+## Usage
 
-**POST /api/names**
-```json
-{
-  "name": "New Name"
-}
-```
-
-**DELETE /api/names**
-```json
-{
-  "name": "Name to Remove"
-}
-```
-
-## Development Mode
-
-If no backend is available, the app will automatically use mock data for development and testing.
-
-## Available Scripts
-
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build locally
-- `npm start` - Alias for `npm run dev`
-
-## Build for Production
+### Basic Usage
 
 ```bash
-npm run build
+# Use default location from .env file
+python app.py
+
+# Search in a specific location
+python app.py "New York, NY"
+
+# Limit results to 5 restaurants
+python app.py "San Francisco, CA" --limit 5
+
+# Get help
+python app.py --help
 ```
 
-This creates a `dist` folder with optimized production files.
+### Command Line Options
 
-## Preview Production Build
+- `location` (optional): The city or location to search in
+  - If not provided, uses `DEFAULT_LOCATION` from `.env` file
+  - Falls back to "Raleigh, NC" if no default is set
 
-```bash
-npm run preview
+- `--limit` or `-l` (optional): Maximum number of restaurants to return
+  - Default: 10
+  - Range: 1-50 (Yelp API limit)
+
+### Example Output
+
+```
+Found 10 restaurants in New York, NY:
+
+1. Joe's Pizza (4.5⭐, 2847 reviews)
+   Categories: Pizza, Italian
+   Price: $$
+   Address: 7 Carmine St, New York, NY 10014
+   Link: https://www.yelp.com/biz/joes-pizza-new-york
+
+2. Katz's Delicatessen (4.0⭐, 15234 reviews)
+   Categories: Delis, Sandwiches, Jewish
+   Price: $$
+   Address: 205 E Houston St, New York, NY 10002
+   Link: https://www.yelp.com/biz/katzs-delicatessen-new-york
 ```
 
-This serves the production build locally for testing.
+## Configuration
 
-## Project Structure
+### Environment Variables
 
-```
-src/
-├── components/
-│   ├── Roulette.jsx          # Main roulette wheel component
-│   ├── Roulette.css          # Roulette styling
-│   ├── NameManager.jsx       # Name management component
-│   └── NameManager.css       # Name manager styling
-├── services/
-│   └── api.js               # API service layer
-├── App.jsx                  # Main app component
-├── App.css                  # App styling
-├── main.jsx                 # Entry point (Vite convention)
-└── index.css                # Global styles
-```
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `YELP_API_KEY` | Your Yelp API key (required) | None |
+| `DEFAULT_LOCATION` | Default search location | "Raleigh, NC" |
 
-## Customization
+### API Limits
 
-### Styling
-- Modify CSS files to change colors, animations, and layout
-- The roulette uses CSS transforms for smooth animations
-- All colors are defined using CSS custom properties for easy theming
+- Yelp API allows up to 50 results per request
+- Rate limits apply based on your Yelp API plan
+- Free tier typically allows 500 requests per day
 
-### Animation
-- Roulette spin duration: 4 seconds
-- Uses cubic-bezier easing for realistic physics
-- Winner display includes pulsing animation
+## Troubleshooting
 
-### Backend Integration
-- Update `src/services/api.js` to modify API endpoints
-- Change `API_BASE_URL` to point to your backend
-- Mock data is available for development
+### Common Issues
 
-## Browser Support
+1. **"Please set your YELP_API_KEY in the .env file"**
+   - Make sure your `.env` file exists and contains a valid API key
+   - Ensure the API key is not set to "YOUR_YELP_API_KEY"
 
-- Chrome (recommended)
-- Firefox
-- Safari
-- Edge
+2. **"API error: 401"**
+   - Your API key is invalid or expired
+   - Check your Yelp Developer account
 
-## Vite Benefits
+3. **"API error: 429"**
+   - You've exceeded the rate limit
+   - Wait before making more requests
 
-This project uses Vite instead of Webpack for several advantages:
-
-- ⚡ **Lightning Fast**: Instant server start and hot module replacement
-- 🚀 **Optimized Builds**: Faster build times with esbuild
-- 📦 **Smaller Bundle**: Better tree-shaking and code splitting
-- 🔧 **Zero Config**: Works out of the box with sensible defaults
-- 🎯 **Modern**: Built for modern browsers with native ES modules
+4. **No results found**
+   - Try a different location format
+   - Check if the location exists
 
 ## License
 
