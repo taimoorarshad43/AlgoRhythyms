@@ -8,7 +8,7 @@ load_dotenv()
 
 # Get API key from environment variable
 API_KEY = os.getenv('YELP_API_KEY')
-if not API_KEY or API_KEY == "YOUR_YELP_API_KEY":
+if not API_KEY:
     raise ValueError("Please set your YELP_API_KEY in the config.env file")
 
 ENDPOINT = "https://api.yelp.com/v3/businesses/search"
