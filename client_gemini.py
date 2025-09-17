@@ -139,14 +139,13 @@ class MCPClient:
         prompts = await self.get_mcp_prompts()
         return tools + prompts
 
-    async def process_query(self, query: str, history: List[Dict], username: str) -> str:
+    async def process_query(self, query: str, history: List[Dict]) -> str:
         """
         Process a query using Gemini with conversation history and available MCP tools.
         
         Args:
             query: The user's new message.
             history: The list of previous messages and responses from Gradio (as dicts).
-            username: The username from the client.
         
         Returns:
             The response from Gemini.
@@ -189,7 +188,6 @@ class MCPClient:
                 print(f"Gemini requested tool call: {function_call.name} with args: {function_call.args}")
 
                 tool_args = {k: v for k, v in function_call.args.items()}
-                tool_args["username"] = username
 
                 result = await self.session.call_tool(
                     function_call.name,
@@ -235,7 +233,7 @@ class MCPClient:
                 query = input("\nQuery: ").strip()
                 if query.lower() == 'quit':
                     break
-                response = await self.process_query(query, history=[], username="test_user") 
+                response = await self.process_query(query, history=[]) 
                 print("\n" + response)
             except Exception as e:
                 print(f"\nError: {str(e)}")
