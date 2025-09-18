@@ -79,17 +79,20 @@ def get_restaurants_by_location(location: str) -> str:
 def get_restaurants_by_mood(location: str, mood: str) -> str:
     """
     Get 10 restaurant suggestions for a given location based on mood criteria using real Yelp data and AI filtering.
+    Returns structured JSON data perfect for frontend UI consumption.
     
     Args:
         location: The city or area to find restaurants in (e.g., "Raleigh, NC", "New York City", "San Francisco")
         mood: The mood or vibe you're looking for (e.g., "spicy and exciting", "romantic and cozy", "casual and fun", "upscale and elegant", "adventurous and unique")
     
     Returns:
-        A formatted string containing 10 real restaurant suggestions that match the mood criteria with details from Yelp
+        A JSON string containing structured restaurant data with reviews, perfect for frontend UI
     """
     try:
-        # Get Yelp API key
+        # Get API keys
         yelp_api_key = os.environ.get('YELP_API_KEY')
+        serpapi_key = os.environ.get('SERPAPI_KEY')
+        
         if not yelp_api_key:
             return json.dumps({
                 "error": "Yelp API key not found. Please set YELP_API_KEY in your environment variables."
@@ -134,7 +137,10 @@ def get_restaurants_by_mood(location: str, mood: str) -> str:
                 "review_count": business["review_count"],
                 "address": " ".join(business["location"]["display_address"]),
                 "neighborhood": business["location"].get("city", ""),
-                "url": business.get("url", "")
+                "url": business.get("url", ""),
+                "phone": business.get("phone", ""),
+                "image_url": business.get("image_url", ""),
+                "business_id": business["id"]
             })
         
         # Create prompt for mood-based filtering
@@ -182,28 +188,178 @@ def get_restaurants_by_mood(location: str, mood: str) -> str:
             if response_text.endswith('```'):
                 response_text = response_text[:-3]
             
-            restaurants = json.loads(response_text)
+            selected_restaurants = json.loads(response_text)
             
-            # Format the response for better presentation
-            result_text = f"🍽️ RESTAURANTS IN {location.upper()} MATCHING '{mood.upper()}' MOOD\n"
-            result_text += f"Found {len(restaurants)} restaurants that match your mood criteria\n\n"
+            # Step 3: Get detailed information and reviews for selected restaurants
+            final_restaurants = []
             
-            for i, restaurant in enumerate(restaurants, 1):
-                result_text += f"{i}. {restaurant['name']} ⭐ {restaurant['rating']} ({restaurant['review_count']} reviews)\n"
-                result_text += f"   🍴 {restaurant['cuisine']}\n"
-                result_text += f"   💰 {restaurant['price_range']}\n"
-                result_text += f"   📍 {restaurant['address']}\n"
-                result_text += f"   🎭 {restaurant['mood_match']}\n\n"
+            for selected_restaurant in selected_restaurants:
+                # Find the full restaurant data from Yelp
+                full_restaurant_data = None
+                for business in businesses:
+                    if business["name"] == selected_restaurant["name"]:
+                        full_restaurant_data = business
+                        break
+                
+                if not full_restaurant_data:
+                    continue
+                
+                # Get reviews for this restaurant using SERPAPI
+                reviews = []
+                try:
+                    serpapi_key = os.environ.get('SERPAPI_KEY')
+                    if serpapi_key:
+                        # Search for reviews using SERPAPI
+                        serpapi_params = {
+                            "engine": "google",
+                            "q": f"{selected_restaurant['name']} {location} reviews",
+                            "api_key": serpapi_key,
+                            "num": 10,
+                            "gl": "us",  # Country
+                            "hl": "en"  # Language
+                        }
+                        
+                        serpapi_response = requests.get("https://serpapi.com/search.json", params=serpapi_params)
+                        
+                        if serpapi_response.status_code == 200:
+                            serpapi_data = serpapi_response.json()
+                            
+                            # Extract review snippets from search results
+                            organic_results = serpapi_data.get("organic_results", [])
+                            review_snippets = []
+                            
+                            for result in organic_results[:5]:  # Check first 5 results
+                                snippet = result.get("snippet", "")
+                                title = result.get("title", "")
+                                
+                                # Look for review-like content
+                                if snippet and len(snippet) > 30:
+                                    # Try to extract rating from snippet
+                                    rating = None
+                                    if "⭐" in snippet or "stars" in snippet.lower():
+                                        # Extract rating if present
+                                        import re
+                                        rating_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:⭐|stars?)', snippet, re.IGNORECASE)
+                                        if rating_match:
+                                            rating = float(rating_match.group(1))
+                                    
+                                    review_snippets.append({
+                                        "source": result.get("source", "Unknown"),
+                                        "title": title,
+                                        "text": snippet,
+                                        "rating": rating,
+                                        "url": result.get("link", "")
+                                    })
+                            
+                            # Take the first 3 review snippets
+                            for i, review_snippet in enumerate(review_snippets[:3]):
+                                reviews.append({
+                                    "user_name": f"Reviewer {i+1}",
+                                    "rating": review_snippet.get("rating", "N/A"),
+                                    "text": review_snippet["text"],
+                                    "source": review_snippet["source"],
+                                    "url": review_snippet["url"],
+                                    "time_created": "Recent"
+                                })
+                        
+                        # If SERPAPI doesn't return enough reviews, try a more specific search
+                        if len(reviews) < 3:
+                            specific_params = {
+                                "engine": "google",
+                                "q": f'"{selected_restaurant["name"]}" "{location}" "review" OR "reviews"',
+                                "api_key": serpapi_key,
+                                "num": 10
+                            }
+                            
+                            specific_response = requests.get("https://serpapi.com/search.json", params=specific_params)
+                            
+                            if specific_response.status_code == 200:
+                                specific_data = specific_response.json()
+                                specific_results = specific_data.get("organic_results", [])
+                                
+                                for result in specific_results:
+                                    if len(reviews) >= 3:
+                                        break
+                                    
+                                    snippet = result.get("snippet", "")
+                                    if snippet and len(snippet) > 30 and snippet not in [r["text"] for r in reviews]:
+                                        reviews.append({
+                                            "user_name": f"Reviewer {len(reviews)+1}",
+                                            "rating": "N/A",
+                                            "text": snippet,
+                                            "source": result.get("source", "Unknown"),
+                                            "url": result.get("link", ""),
+                                            "time_created": "Recent"
+                                        })
+                    
+                    # If we still don't have enough reviews, add a fallback message
+                    if len(reviews) < 3:
+                        reviews.append({
+                            "user_name": "System",
+                            "rating": "N/A",
+                            "text": f"Restaurant information available. Overall rating: {selected_restaurant['rating']} stars with {selected_restaurant['review_count']} reviews on Yelp.",
+                            "source": "Yelp",
+                            "url": full_restaurant_data.get("url", ""),
+                            "time_created": "N/A"
+                        })
+                        
+                except Exception as e:
+                    print(f"Error fetching SERPAPI reviews for {selected_restaurant['name']}: {str(e)}")
+                    # Fallback to basic restaurant info
+                    reviews.append({
+                        "user_name": "System",
+                        "rating": selected_restaurant['rating'],
+                        "text": f"Restaurant information available. Overall rating: {selected_restaurant['rating']} stars with {selected_restaurant['review_count']} reviews on Yelp.",
+                        "source": "Yelp",
+                        "url": full_restaurant_data.get("url", ""),
+                        "time_created": "N/A"
+                    })
+                
+                # Create structured restaurant object
+                restaurant_obj = {
+                    "id": full_restaurant_data["id"],
+                    "name": selected_restaurant["name"],
+                    "cuisine": selected_restaurant["cuisine"],
+                    "price_range": selected_restaurant["price_range"],
+                    "rating": float(selected_restaurant["rating"]),
+                    "review_count": int(selected_restaurant["review_count"]),
+                    "address": selected_restaurant["address"],
+                    "phone": full_restaurant_data.get("phone", ""),
+                    "url": full_restaurant_data.get("url", ""),
+                    "image_url": full_restaurant_data.get("image_url", ""),
+                    "coordinates": {
+                        "latitude": full_restaurant_data["coordinates"]["latitude"],
+                        "longitude": full_restaurant_data["coordinates"]["longitude"]
+                    },
+                    "categories": [cat["title"] for cat in full_restaurant_data["categories"]],
+                    "mood_match": selected_restaurant["mood_match"],
+                    "reviews": reviews
+                }
+                
+                final_restaurants.append(restaurant_obj)
             
-            result_text += "💡 These are real restaurants from Yelp that match your mood criteria!"
+            # Create the final JSON response
+            result = {
+                "success": True,
+                "location": location,
+                "mood": mood,
+                "total_restaurants": len(final_restaurants),
+                "restaurants": final_restaurants,
+                "timestamp": datetime.now().isoformat()
+            }
             
-            return result_text
+            return json.dumps(result, indent=2)
             
         except json.JSONDecodeError as e:
-            return f"Error parsing Gemini response: {str(e)}\n\nRaw response: {response.text}"
+            return json.dumps({
+                "success": False,
+                "error": f"Error parsing Gemini response: {str(e)}",
+                "raw_response": response.text
+            })
         
     except Exception as e:
         return json.dumps({
+            "success": False,
             "error": f"Failed to get mood-based restaurant suggestions: {str(e)}"
         })
 

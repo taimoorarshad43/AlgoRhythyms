@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Restaurant Mood Finder - Find Your Perfect Dining Experience{% endblock %}
+
+{% block content %}
+<div class="text-center mb-5">
+    <h1 class="display-4 fw-bold text-primary mb-3">
+        <i class="fas fa-utensils me-3"></i>Restaurant Mood Finder
+    </h1>
+    <p class="lead text-muted">Discover restaurants that match your dining mood and location</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="search-form">
+            <form id="searchForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="location" class="form-label fw-bold">
+                            <i class="fas fa-map-marker-alt me-2"></i>Location
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="location" 
+                               placeholder="e.g., New York City, San Francisco, Somerset, NJ" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="mood" class="form-label fw-bold">
+                            <i class="fas fa-heart me-2"></i>Mood
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="mood" 
+                               placeholder="e.g., spicy and exciting, romantic and cozy" required>
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-search btn-lg">
+                        <i class="fas fa-search me-2"></i>Find Restaurants
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <h4>Finding perfect restaurants for you...</h4>
+            <p class="text-muted">This may take a moment as we search for the best matches</p>
+        </div>
+        
+        <!-- Error message -->
+        <div class="error-message" id="errorMessage" style="display: none;">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <span id="errorText"></span>
+        </div>
+        
+        <!-- Results will be displayed here -->
+        <div id="results"></div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="text-center">
+            <h3 class="mb-4">Popular Mood Examples</h3>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-fire fa-2x text-danger mb-3"></i>
+                            <h5>Spicy & Exciting</h5>
+                            <p class="text-muted small">Hot, bold flavors with energetic atmosphere</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-heart fa-2x text-pink mb-3"></i>
+                            <h5>Romantic & Cozy</h5>
+                            <p class="text-muted small">Intimate settings perfect for dates</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-smile fa-2x text-warning mb-3"></i>
+                            <h5>Casual & Fun</h5>
+                            <p class="text-muted small">Relaxed atmosphere for friends and family</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-crown fa-2x text-purple mb-3"></i>
+                            <h5>Upscale & Elegant</h5>
+                            <p class="text-muted small">Fine dining with sophisticated ambiance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-4">
+    <a href="/demo" class="btn btn-outline-primary">
+        <i class="fas fa-eye me-2"></i>View Demo Results
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('searchForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const location = document.getElementById('location').value.trim();
+    const mood = document.getElementById('mood').value.trim();
+    
+    if (!location || !mood) {
+        showError('Please enter both location and mood');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('results').innerHTML = '';
+    
+    try {
+        const response = await fetch('/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ location, mood })
+        });
+        
+        const data = await response.json();
+        
+        // Hide loading
+        document.getElementById('loading').style.display = 'none';
+        
+        if (data.success) {
+            displayResults(data);
+        } else {
+            showError(data.error || 'An error occurred while searching for restaurants');
+        }
+    } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        showError('Network error. Please try again.');
+    }
+});
+
+function showError(message) {
+    document.getElementById('errorText').textContent = message;
+    document.getElementById('errorMessage').style.display = 'block';
+}
+
+function displayResults(data) {
+    const resultsDiv = document.getElementById('results');
+    
+    let html = `
+        <div class="success-message">
+            <i class="fas fa-check-circle me-2"></i>
+            Found ${data.total_restaurants} restaurants in ${data.location} matching "${data.mood}" mood
+        </div>
+    `;
+    
+    data.restaurants.forEach((restaurant, index) => {
+        const stars = '★'.repeat(Math.floor(restaurant.rating)) + '☆'.repeat(5 - Math.floor(restaurant.rating));
+        
+        html += `
+            <div class="restaurant-card">
+                <div class="restaurant-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h3 class="mb-2">${restaurant.name}</h3>
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="rating-stars me-3">${stars}</span>
+                                <span class="me-3">${restaurant.rating}/5</span>
+                                <span class="badge bg-light text-dark">${restaurant.review_count} reviews</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="mood-badge">${restaurant.mood}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="restaurant-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <h5><i class="fas fa-utensils me-2"></i>${restaurant.cuisine}</h5>
+                                <p class="mb-2"><i class="fas fa-map-marker-alt me-2"></i>${restaurant.address}</p>
+                                <p class="mb-2"><i class="fas fa-phone me-2"></i>${restaurant.phone}</p>
+                                <p class="mb-3"><i class="fas fa-dollar-sign me-2"></i>Price Range: ${restaurant.price_range}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-tags me-2"></i>Categories:</h6>
+                                <div class="d-flex flex-wrap">
+                                    ${restaurant.categories.map(cat => `<span class="badge bg-secondary me-2 mb-1">${cat}</span>`).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <h6><i class="fas fa-heart me-2"></i>Why it matches your mood:</h6>
+                                <p class="text-muted">${restaurant.mood_match}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <img src="${restaurant.image_url}" alt="${restaurant.name}" 
+                                     class="img-fluid rounded" style="max-height: 200px; width: 100%; object-fit: cover;">
+                            </div>
+                            <div class="text-center">
+                                <a href="${restaurant.url}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-external-link-alt me-2"></i>View on Yelp
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="reviews-section">
+                        <h5><i class="fas fa-comments me-2"></i>Customer Reviews</h5>
+                        ${restaurant.reviews.map(review => `
+                            <div class="review-card">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <strong>${review.user_name}</strong>
+                                        <span class="rating-stars ms-2">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+                                    </div>
+                                    <span class="review-source">${review.source}</span>
+                                </div>
+                                <p class="mb-2">${review.text}</p>
+                                <small class="text-muted">${review.time_created}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    resultsDiv.innerHTML = html;
+}
+</script>
+{% endblock %}
