@@ -26,6 +26,7 @@ A simple web interface for finding restaurants based on location and mood criter
 3. **Open in Browser**:
    - Main app: http://localhost:5000
    - Demo results: http://localhost:5000/demo
+   - Restaurant Roulette: http://localhost:5000/roulette
 
 ## Usage
 
@@ -34,6 +35,15 @@ A simple web interface for finding restaurants based on location and mood criter
 2. Enter a location (e.g., "New York City", "Somerset, NJ")
 3. Enter a mood (e.g., "spicy and exciting", "romantic and cozy")
 4. Click "Find Restaurants"
+
+### Restaurant Roulette
+1. Go to http://localhost:5000/roulette
+2. Enter a location (e.g., "New York City", "Somerset, NJ")
+3. Enter a mood (e.g., "spicy and exciting", "romantic and cozy")
+4. Click "Spin the Roulette!" to search for restaurants and get a roulette wheel
+5. Spin the wheel to get a random restaurant review
+6. Click "View Full Restaurant" to see the complete restaurant card
+7. Click "Spin Again" to try another random selection
 
 ### Example Moods
 - **Spicy & Exciting**: Hot, bold flavors with energetic atmosphere
@@ -111,13 +121,15 @@ Search for restaurants based on location and mood.
 ├── templates/
 │   ├── base.html            # Base template with common layout
 │   ├── index.html           # Main search page
-│   └── results.html         # Results display page
+│   ├── results.html         # Results display page
+│   └── roulette_search.html # Interactive roulette search interface
 └── README_Flask_UI.md       # This file
 ```
 
 ## Demo
 
-Visit http://localhost:5000/demo to see sample results without making API calls.
+- **Regular Results**: Visit http://localhost:5000/demo to see sample results without making API calls
+- **Roulette Interface**: Visit http://localhost:5000/roulette to try the interactive restaurant roulette with real data
 
 ## Notes
 

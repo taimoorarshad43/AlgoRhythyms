@@ -54,6 +54,11 @@ def search_restaurants():
             'error': f'Server error: {str(e)}'
         }), 500
 
+@app.route('/roulette')
+def roulette_search():
+    """Roulette search page with location and mood input."""
+    return render_template('roulette_search.html')
+
 @app.route('/demo')
 def demo():
     """Demo page with sample data."""
