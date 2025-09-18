@@ -76,6 +76,138 @@ def get_restaurants_by_location(location: str) -> str:
         })
 
 @mcp.tool()
+def get_restaurants_by_mood(location: str, mood: str) -> str:
+    """
+    Get 10 restaurant suggestions for a given location based on mood criteria using real Yelp data and AI filtering.
+    
+    Args:
+        location: The city or area to find restaurants in (e.g., "Raleigh, NC", "New York City", "San Francisco")
+        mood: The mood or vibe you're looking for (e.g., "spicy and exciting", "romantic and cozy", "casual and fun", "upscale and elegant", "adventurous and unique")
+    
+    Returns:
+        A formatted string containing 10 real restaurant suggestions that match the mood criteria with details from Yelp
+    """
+    try:
+        # Get Yelp API key
+        yelp_api_key = os.environ.get('YELP_API_KEY')
+        if not yelp_api_key:
+            return json.dumps({
+                "error": "Yelp API key not found. Please set YELP_API_KEY in your environment variables."
+            })
+        
+        # Step 1: Get real restaurants from Yelp API
+        search_headers = {"Authorization": f"Bearer {yelp_api_key}"}
+        search_params = {
+            "term": "restaurants",
+            "location": location,
+            "limit": 50,  # Get more restaurants to filter from
+            "sort_by": "rating",
+            "radius": 10000  # 10km radius to get more options
+        }
+        
+        search_response = requests.get("https://api.yelp.com/v3/businesses/search", 
+                                     headers=search_headers, params=search_params)
+        
+        if search_response.status_code != 200:
+            return json.dumps({
+                "error": f"Failed to search restaurants: {search_response.status_code} - {search_response.text}"
+            })
+        
+        businesses = search_response.json().get("businesses", [])
+        
+        if not businesses:
+            return json.dumps({
+                "error": f"No restaurants found for location: {location}"
+            })
+        
+        # Step 2: Use Gemini to filter and match restaurants to mood
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Prepare restaurant data for Gemini
+        restaurant_data = []
+        for business in businesses:
+            restaurant_data.append({
+                "name": business["name"],
+                "cuisine": [cat["title"] for cat in business["categories"]],
+                "price_range": business.get("price", "N/A"),
+                "rating": business["rating"],
+                "review_count": business["review_count"],
+                "address": " ".join(business["location"]["display_address"]),
+                "neighborhood": business["location"].get("city", ""),
+                "url": business.get("url", "")
+            })
+        
+        # Create prompt for mood-based filtering
+        prompt = f"""
+        You are a restaurant recommendation expert. I have real restaurant data from Yelp for {location}, and I need you to select and rank the top 10 restaurants that best match the mood: "{mood}".
+        
+        Here are the real restaurants from Yelp:
+        {json.dumps(restaurant_data, indent=2)}
+        
+        Please select exactly 10 restaurants that best match the "{mood}" mood and provide:
+        - Restaurant name (use the exact name from the data)
+        - Cuisine type (from the categories)
+        - Price range (from the data)
+        - Rating and review count
+        - Address
+        - Why it matches the mood (brief explanation)
+        
+        IMPORTANT: Only use restaurants from the provided data. Do not make up restaurants.
+        Return ONLY a valid JSON array with this exact structure:
+        [
+            {{
+                "name": "Exact Restaurant Name from Data",
+                "cuisine": "Primary Cuisine Type",
+                "price_range": "Price from Data",
+                "rating": "Rating from Data",
+                "review_count": "Review Count from Data",
+                "address": "Address from Data",
+                "mood_match": "Why this restaurant matches the mood"
+            }}
+        ]
+        
+        Focus on restaurants that truly embody the "{mood}" experience based on their cuisine, price range, and other characteristics.
+        Return only the JSON array, nothing else.
+        """
+        
+        # Generate response from Gemini
+        response = model.generate_content(prompt)
+        
+        # Parse and format the response
+        try:
+            # Extract JSON from response
+            response_text = response.text.strip()
+            if response_text.startswith('```json'):
+                response_text = response_text[7:]
+            if response_text.endswith('```'):
+                response_text = response_text[:-3]
+            
+            restaurants = json.loads(response_text)
+            
+            # Format the response for better presentation
+            result_text = f"🍽️ RESTAURANTS IN {location.upper()} MATCHING '{mood.upper()}' MOOD\n"
+            result_text += f"Found {len(restaurants)} restaurants that match your mood criteria\n\n"
+            
+            for i, restaurant in enumerate(restaurants, 1):
+                result_text += f"{i}. {restaurant['name']} ⭐ {restaurant['rating']} ({restaurant['review_count']} reviews)\n"
+                result_text += f"   🍴 {restaurant['cuisine']}\n"
+                result_text += f"   💰 {restaurant['price_range']}\n"
+                result_text += f"   📍 {restaurant['address']}\n"
+                result_text += f"   🎭 {restaurant['mood_match']}\n\n"
+            
+            result_text += "💡 These are real restaurants from Yelp that match your mood criteria!"
+            
+            return result_text
+            
+        except json.JSONDecodeError as e:
+            return f"Error parsing Gemini response: {str(e)}\n\nRaw response: {response.text}"
+        
+    except Exception as e:
+        return json.dumps({
+            "error": f"Failed to get mood-based restaurant suggestions: {str(e)}"
+        })
+
+@mcp.tool()
 def get_restaurant_reviews(location: str) -> str:
     """
     Get restaurant reviews for a specific location. Returns a simple list of restaurants with their reviews.
