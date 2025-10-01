@@ -42,7 +42,7 @@ class MCPClient:
     def __init__(self):
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-        self.model_name = "gemini-1.5-flash"
+        self.model_name = "gemini-2.5-flash"
         self.gemini_model = genai.GenerativeModel(self.model_name)
         self.available_prompts = []
 

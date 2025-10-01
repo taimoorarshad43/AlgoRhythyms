@@ -34,7 +34,7 @@ def get_restaurants_by_location(location: str) -> str:
     """
     try:
         # Initialize Gemini model
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Create prompt for restaurant suggestions
         prompt = f"""
@@ -124,7 +124,7 @@ def get_restaurants_by_mood(location: str, mood: str) -> str:
             })
         
         # Step 2: Use Gemini to filter and match restaurants to mood
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Prepare restaurant data for Gemini
         restaurant_data = []
