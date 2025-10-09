@@ -3,12 +3,15 @@ import json
 import sys
 import os
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from azure.identity.aio import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential as SyncDefaultAzureCredential
 from semantic_kernel.agents import AzureAIAgent, AzureAIAgentThread
-from azure.ai.agents.models import BingGroundingTool
+from azure.ai.agents.models import BingGroundingTool, ListSortOrder
 from azure.core.exceptions import ResourceNotFoundError
+from azure.ai.projects import AIProjectClient
 from dotenv import load_dotenv
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -111,6 +114,141 @@ class RestaurantMoodAI:
                 "hint": "Make sure you're authenticated with Azure (try 'az login')"
             }
     
+    def get_restaurant_reviews(self, restaurant_name: str, review_agent_id: str = "asst_yWj099Xl57apJnbE6wciCp8Y") -> Dict[str, Any]:
+        """Get 3-5 reviews for a specific restaurant using the RestaurantReviewFinder agent."""
+        try:
+            print(f"  📝 Fetching reviews for: {restaurant_name}...")
+            
+            # Create synchronous project client for the review agent
+            project = AIProjectClient(
+                credential=SyncDefaultAzureCredential(),
+                endpoint=self.endpoint
+            )
+            
+            # Get the review agent
+            agent = project.agents.get_agent(review_agent_id)
+            
+            # Create a thread for this conversation
+            thread = project.agents.threads.create()
+            
+            # Create a message asking for reviews
+            message = project.agents.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=f"Please provide 3-5 detailed reviews for the restaurant: {restaurant_name}"
+            )
+            
+            # Run the agent
+            run = project.agents.runs.create_and_process(
+                thread_id=thread.id,
+                agent_id=agent.id
+            )
+            
+            if run.status == "failed":
+                return {
+                    "success": False,
+                    "restaurant": restaurant_name,
+                    "error": f"Review agent run failed: {run.last_error}"
+                }
+            
+            # Get the messages from the thread
+            messages = project.agents.messages.list(thread_id=thread.id, order=ListSortOrder.ASCENDING)
+            
+            # Extract the assistant's response
+            reviews = []
+            for msg in messages:
+                if msg.role == "assistant" and msg.text_messages:
+                    reviews.append(msg.text_messages[-1].text.value)
+            
+            return {
+                "success": True,
+                "restaurant": restaurant_name,
+                "reviews": reviews
+            }
+            
+        except Exception as e:
+            return {
+                "success": False,
+                "restaurant": restaurant_name,
+                "error": f"Failed to get reviews: {str(e)}"
+            }
+    
+    def extract_restaurant_names(self, agent_response: str) -> List[str]:
+        """Extract restaurant names from the agent's response."""
+        # Try to parse restaurant names from various formats
+        restaurants = []
+        
+        # Pattern 1: Look for numbered lists like "1. Restaurant Name" or "1) Restaurant Name"
+        pattern1 = r'^\s*\d+[\.\)]\s*\*?\*?([^:\n\-]+?)(?:\*\*)?(?:\s*[-–—:]|$)'
+        matches1 = re.findall(pattern1, agent_response, re.MULTILINE)
+        
+        # Pattern 2: Look for restaurant names in bold **Restaurant Name**
+        pattern2 = r'\*\*([^*\n]+?)\*\*'
+        matches2 = re.findall(pattern2, agent_response)
+        
+        # Use pattern 1 if found, otherwise use pattern 2
+        if matches1:
+            restaurants = [name.strip() for name in matches1]
+        elif matches2:
+            restaurants = [name.strip() for name in matches2]
+        
+        # Clean up and limit to 10 restaurants
+        restaurants = [r for r in restaurants if len(r) > 2 and len(r) < 100][:10]
+        
+        return restaurants
+    
+    async def call_agent_with_reviews(self, agent_name: str, location: str, mood: str, 
+                                     get_reviews: bool = False, review_agent_id: str = "asst_yWj099Xl57apJnbE6wciCp8Y") -> Dict[str, Any]:
+        """Call the restaurant agent and optionally get reviews for each restaurant."""
+        # First, get the restaurant recommendations
+        result = await self.call_agent(agent_name, location, mood)
+        
+        if not result["success"]:
+            return result
+        
+        # If reviews are not requested, return the original result
+        if not get_reviews:
+            return result
+        
+        # Extract response content
+        response = result["response"]
+        response_text = ""
+        
+        if hasattr(response, 'message') and hasattr(response.message, 'content'):
+            response_text = response.message.content
+        elif hasattr(response, 'content'):
+            response_text = response.content
+        elif hasattr(response, 'text'):
+            response_text = response.text
+        else:
+            response_text = str(response)
+        
+        # Extract restaurant names from the response
+        print("\n🔍 Extracting restaurant names from recommendations...")
+        restaurants = self.extract_restaurant_names(response_text)
+        
+        if not restaurants:
+            print("⚠️  Could not extract restaurant names from response")
+            return result
+        
+        print(f"✅ Found {len(restaurants)} restaurants\n")
+        
+        # Get reviews for each restaurant
+        print("📝 Fetching reviews for each restaurant...\n")
+        restaurant_reviews = []
+        
+        for restaurant in restaurants:
+            review_result = await asyncio.to_thread(
+                self.get_restaurant_reviews, restaurant, review_agent_id
+            )
+            restaurant_reviews.append(review_result)
+        
+        # Add reviews to the result
+        result["restaurants"] = restaurants
+        result["restaurant_reviews"] = restaurant_reviews
+        
+        return result
+    
     def format_response(self, result: Dict[str, Any]) -> str:
         """Format the response for display."""
         if not result["success"]:
@@ -155,17 +293,65 @@ class RestaurantMoodAI:
         else:
             output += str(response)
         
+        # Add reviews if available
+        if "restaurant_reviews" in result:
+            output += "\n\n" + "="*80 + "\n"
+            output += "📝 RESTAURANT REVIEWS\n"
+            output += "="*80 + "\n\n"
+            
+            for review_data in result["restaurant_reviews"]:
+                restaurant = review_data.get("restaurant", "Unknown")
+                output += f"🍽️  {restaurant}\n"
+                output += "-" * 80 + "\n"
+                
+                if review_data.get("success"):
+                    reviews = review_data.get("reviews", [])
+                    if reviews:
+                        for i, review in enumerate(reviews, 1):
+                            output += f"{review}\n"
+                            if i < len(reviews):
+                                output += "\n"
+                    else:
+                        output += "No reviews found.\n"
+                else:
+                    output += f"❌ Error: {review_data.get('error', 'Unknown error')}\n"
+                
+                output += "\n"
+        
         return output
 
 async def main():
-    parser = argparse.ArgumentParser(description="Restaurant Mood AI - Find restaurants based on location and mood")
-    parser.add_argument("--location", "-l", help="Location to search for restaurants")
-    parser.add_argument("--mood", "-m", help="Mood/atmosphere for restaurant search")
-    parser.add_argument("--agent", "-a", help="Specific agent name to call (optional)")
-    parser.add_argument("--list-agents", action="store_true", help="List all available agents")
+    parser = argparse.ArgumentParser(
+        description="Restaurant Mood AI - Find restaurants with reviews based on location and mood",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python restaurant_mood_azureai.py --location "New York" --mood "romantic"
+  python restaurant_mood_azureai.py -l "Boston" -m "casual"
+  python restaurant_mood_azureai.py --location "San Francisco" --mood "upscale" --no-reviews
+        """
+    )
+    
+    # Arguments
+    parser.add_argument("--location", "-l", 
+                       help="Location to search for restaurants (e.g., 'New York', 'Boston')")
+    parser.add_argument("--mood", "-m",
+                       help="Mood/atmosphere for restaurant search (e.g., 'romantic', 'casual', 'upscale')")
+    
+    # Optional arguments with defaults
+    parser.add_argument("--agent", "-a", 
+                       default=os.getenv('AZURE_AI_AGENT_NAME', 'RestaurantMoodFinder'),
+                       help="Agent name to use (default: RestaurantMoodFinder or AZURE_AI_AGENT_NAME env var)")
+    parser.add_argument("--no-reviews", action="store_true",
+                       help="Skip fetching reviews (only show restaurant recommendations)")
+    parser.add_argument("--review-agent-id", 
+                       default=os.getenv('AZURE_AI_REVIEW_AGENT_ID', 'asst_yWj099Xl57apJnbE6wciCp8Y'),
+                       help="ID of the review agent (default: asst_yWj099Xl57apJnbE6wciCp8Y)")
     parser.add_argument("--endpoint", "-e", 
                        default=os.getenv('AZURE_AI_ENDPOINT', 'https://mit-pocs.services.ai.azure.com/api/projects/restaurantRoulette'), 
                        help="Azure AI project endpoint")
+    parser.add_argument("--list-agents", action="store_true", 
+                       help="List all available agents and exit")
     
     args = parser.parse_args()
     
@@ -187,18 +373,24 @@ async def main():
                 print(ai_client.format_response(result))
                 sys.exit(1)
         else:
-            # Call agent for restaurant recommendations
-            if not args.agent:
-                print("❌ Error: Agent name is required. Use --list-agents to see available agents.")
-                print("Usage: python restaurant_mood_azureai.py --location 'New York' --mood 'romantic' --agent 'agent-name'")
-                sys.exit(1)
-            
+            # Call agent for restaurant recommendations with reviews (by default)
             if not args.location or not args.mood:
-                print("❌ Error: Both location and mood are required when calling an agent.")
-                print("Usage: python restaurant_mood_azureai.py --location 'New York' --mood 'romantic' --agent 'agent-name'")
+                print("❌ Error: Both --location and --mood are required.")
+                print("Usage: python restaurant_mood_azureai.py --location 'New York' --mood 'romantic'")
+                print("Use --list-agents to see available agents")
                 sys.exit(1)
             
-            result = await ai_client.call_agent(args.agent, args.location, args.mood)
+            print(f"🔍 Searching for {args.mood} restaurants in {args.location}...")
+            if not args.no_reviews:
+                print("📝 Reviews will be fetched for each restaurant\n")
+            
+            result = await ai_client.call_agent_with_reviews(
+                args.agent, 
+                args.location, 
+                args.mood,
+                get_reviews=not args.no_reviews,  # Reviews enabled by default
+                review_agent_id=args.review_agent_id
+            )
             print(ai_client.format_response(result))
             
     except KeyboardInterrupt:
