@@ -135,7 +135,7 @@ class RestaurantMoodAI:
             message = project.agents.messages.create(
                 thread_id=thread.id,
                 role="user",
-                content=f"Please provide 3-5 detailed reviews for the restaurant: {restaurant_name}"
+                content=f"Please provide exactly 1 detailed review for the restaurant: {restaurant_name}. Include the rating, date, and reviewer name if available."
             )
             
             # Run the agent
@@ -234,7 +234,7 @@ class RestaurantMoodAI:
         print(f"✅ Found {len(restaurants)} restaurants\n")
         
         # Get reviews for each restaurant
-        print("📝 Fetching reviews for each restaurant...\n")
+        print("📝 Fetching 1 review for each restaurant...\n")
         restaurant_reviews = []
         
         for restaurant in restaurants:
