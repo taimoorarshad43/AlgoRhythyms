@@ -280,5 +280,82 @@ def demo():
     
     return render_template('results.html', data=sample_data)
 
+@app.route('/restaurant/<restaurant_id>')
+def restaurant_details(restaurant_id):
+    """Restaurant details page."""
+    # For demo purposes, we'll use sample data
+    # In a real app, you'd fetch this from your database
+    sample_restaurants = {
+        'demo_1': {
+            'name': 'Jalapeno And Cilantro Grill',
+            'cuisine': 'Mexican',
+            'price_range': '$$',
+            'rating': 4.8,
+            'review_count': 44,
+            'address': '28 S Main St Milltown, NJ 08850',
+            'phone': '+1-732-555-0123',
+            'mood_match': 'Mexican cuisine is known for its spicy dishes, offering an exciting flavor profile.',
+            'reviews': [
+                {
+                    'user_name': 'Sarah M.',
+                    'rating': 5,
+                    'text': 'Amazing spicy tacos! The atmosphere is electric and the food is incredibly flavorful. Perfect for a spicy food adventure!',
+                    'source': 'Google Reviews',
+                    'time_created': '2025-01-15'
+                }
+            ]
+        },
+        'demo_2': {
+            'name': 'Ara\'s Hot Chicken',
+            'cuisine': 'Halal',
+            'price_range': '$$',
+            'rating': 4.7,
+            'review_count': 31,
+            'address': '323 Raritan Ave Highland Park, NJ 08904',
+            'phone': '+1-732-555-0456',
+            'mood_match': 'The name itself suggests spicy chicken, implying an exciting and flavorful experience.',
+            'reviews': [
+                {
+                    'user_name': 'Ahmed H.',
+                    'rating': 5,
+                    'text': 'Best hot chicken in the area! The spice levels are perfect and the chicken is always crispy and juicy.',
+                    'source': 'Google Reviews',
+                    'time_created': '2025-01-12'
+                }
+            ]
+        },
+        'demo_3': {
+            'name': '蜀世冒菜 S&Y Mini HotPot',
+            'cuisine': 'Hot Pot',
+            'price_range': '$$',
+            'rating': 4.7,
+            'review_count': 26,
+            'address': '1644 NJ-27 Edison, NJ 08817',
+            'phone': '+1-732-555-0789',
+            'mood_match': 'Szechuan hot pot is known for its intense spiciness and interactive dining experience, making it exciting.',
+            'reviews': [
+                {
+                    'user_name': 'David W.',
+                    'rating': 5,
+                    'text': 'Authentic Szechuan hot pot with incredible spice levels. The interactive cooking experience is so much fun!',
+                    'source': 'Google Reviews',
+                    'time_created': '2025-01-14'
+                }
+            ]
+        }
+    }
+    
+    restaurant = sample_restaurants.get(restaurant_id)
+    if not restaurant:
+        return "Restaurant not found", 404
+    
+    # Generate stars for display
+    stars = '★' * int(restaurant['rating']) + '☆' * (5 - int(restaurant['rating']))
+    
+    return render_template('restaurant_details.html', 
+                         restaurant=restaurant, 
+                         stars=stars,
+                         mood=request.args.get('mood', 'spicy and exciting'))
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

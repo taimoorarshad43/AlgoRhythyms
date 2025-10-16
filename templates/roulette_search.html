@@ -1,41 +1,78 @@
 {% extends "base.html" %}
 
-{% block title %}Restaurant Roulette - Find Your Perfect Dining Experience{% endblock %}
+{% block title %}Restaurant Roulette - Spin to Find Your Perfect Meal{% endblock %}
 
 {% block content %}
-<div class="text-center mb-5">
-    <h1 class="display-4 fw-bold text-primary mb-3">
-        <i class="fas fa-dice me-3"></i>Restaurant Roulette
-    </h1>
-    <p class="lead text-muted">Spin the wheel and discover restaurants that match your dining mood!</p>
+<!-- Header Section -->
+<div class="header">
+    <div class="logo">
+        <i class="fas fa-utensils"></i>
+    </div>
+    <h1>Restaurant Roulette</h1>
+    <p>Spin to find your perfect meal</p>
 </div>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="search-form">
+<!-- Main Roulette Interface -->
+<div class="main-content">
+    <!-- Search Form (if no data) -->
+    <div id="searchSection">
+        <h2 class="section-title">Find Your Perfect Restaurant</h2>
+        <p class="section-subtitle">Enter your location and dining mood!</p>
+        
             <form id="rouletteSearchForm">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="location" class="form-label fw-bold">
-                            <i class="fas fa-map-marker-alt me-2"></i>Location
+            <div class="form-group">
+                <label for="location" class="form-label">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <i class="fas fa-magic"></i>
+                    Where's the action?
                         </label>
-                        <input type="text" class="form-control form-control-lg" id="location" 
-                               placeholder="e.g., New York City, San Francisco, Somerset, NJ" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="mood" class="form-label fw-bold">
-                            <i class="fas fa-heart me-2"></i>Mood
-                        </label>
-                        <input type="text" class="form-control form-control-lg" id="mood" 
-                               placeholder="e.g., spicy and exciting, romantic and cozy" required>
-                    </div>
-                </div>
+                <input type="text" class="form-control" id="location" 
+                       placeholder="Enter city, area, or address..." required>
                 
-                <div class="text-center">
-                    <button type="submit" class="btn btn-success btn-search btn-lg">
-                        <i class="fas fa-dice me-2"></i>Spin the Roulette!
+                <div class="location-buttons">
+                    <button type="button" class="location-btn" data-location="New York City, NY">New York City, NY</button>
+                    <button type="button" class="location-btn" data-location="Somerset, NJ">Somerset, NJ</button>
+                    <button type="button" class="location-btn" data-location="Los Angeles, CA">Los Angeles, CA</button>
+                    <button type="button" class="location-btn" data-location="Chicago, IL">Chicago, IL</button>
+                    <button type="button" class="location-btn" data-location="Miami, FL">Miami, FL</button>
+                    <button type="button" class="location-btn" data-location="San Francisco, CA">San Francisco, CA</button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="mood" class="form-label">
+                    <i class="fas fa-magic"></i>
+                    <i class="fas fa-comment"></i>
+                    What's your vibe?
+                </label>
+                
+                <div class="mood-options">
+                    <button type="button" class="mood-btn" data-mood="spicy and exciting">
+                        <div class="mood-title">Spicy & Exciting</div>
+                        <div class="mood-description">Hot, bold flavors with energetic atmosphere</div>
+                    </button>
+                    <button type="button" class="mood-btn" data-mood="romantic and cozy">
+                        <div class="mood-title">Romantic & Cozy</div>
+                        <div class="mood-description">Intimate settings perfect for dates</div>
+                    </button>
+                    <button type="button" class="mood-btn" data-mood="casual and fun">
+                        <div class="mood-title">Casual & Fun</div>
+                        <div class="mood-description">Relaxed atmosphere for friends and family</div>
+                    </button>
+                    <button type="button" class="mood-btn" data-mood="upscale and elegant">
+                        <div class="mood-title">Upscale & Elegant</div>
+                        <div class="mood-description">Fine dining with sophisticated ambiance</div>
                     </button>
                 </div>
+                
+                <input type="text" class="form-control mt-3" id="customMood" 
+                       placeholder="Or create your own mood...">
+            </div>
+            
+            <button type="submit" class="action-btn">
+                <i class="fas fa-search"></i>
+                SPIN ROULETTE!
+            </button>
             </form>
         </div>
         
@@ -43,83 +80,152 @@
         <div class="loading" id="loading">
             <div class="spinner"></div>
             <h4>Finding perfect restaurants for your roulette...</h4>
-            <p class="text-muted">This may take a moment as we search for the best matches</p>
+        <p>This may take a moment as we search for the best matches</p>
         </div>
         
         <!-- Error message -->
-        <div class="error-message" id="errorMessage" style="display: none;">
-            <i class="fas fa-exclamation-triangle me-2"></i>
+    <div class="error-message" id="errorMessage">
+        <i class="fas fa-exclamation-triangle"></i>
             <span id="errorText"></span>
         </div>
         
-        <!-- Roulette will be displayed here -->
-        <div id="rouletteContainer" style="display: none;">
-            <!-- Roulette content will be dynamically inserted here -->
-        </div>
-    </div>
+    <!-- Roulette Ready Section -->
+    <div id="rouletteReadySection" class="d-none">
+        <div class="roulette-ready-banner">
+            <h2>Roulette Ready!</h2>
+            <p>Found <span id="restaurantCount">0</span> restaurants in <span id="searchLocation">Location</span> matching '<span id="searchMood">mood</span>' mood</p>
+            <p class="instruction">Tap the wheel to spin!</p>
 </div>
 
-<div class="row mt-5">
-    <div class="col-12">
-        <div class="text-center">
-            <h3 class="mb-4">How Restaurant Roulette Works</h3>
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-search fa-2x text-primary mb-3"></i>
-                            <h5>1. Search</h5>
-                            <p class="text-muted small">Enter your location and dining mood</p>
+        <!-- Roulette Wheel -->
+        <div class="roulette-container">
+            <div class="roulette-wheel" id="rouletteWheel">
+                <div class="roulette-center">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div class="roulette-sections" id="rouletteSections">
+                    <!-- Roulette sections will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <button class="action-btn" id="spinButton">
+                <i class="fas fa-play"></i>
+                Spin the Roulette!
+            </button>
+            <p class="instruction">Click to spin and discover a random restaurant view!</p>
+        </div>
+        
+        <!-- Roulette Table -->
+        <div class="roulette-table">
+            <h3><i class="fas fa-dice"></i> Roulette Table: <span id="tableCount">0</span> Options</h3>
+            <div id="restaurantOptions">
+                <!-- Restaurant options will be displayed here -->
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-dice fa-2x text-success mb-3"></i>
-                            <h5>2. Spin</h5>
-                            <p class="text-muted small">Watch the roulette spin to find a random restaurant review</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="fas fa-utensils fa-2x text-warning mb-3"></i>
-                            <h5>3. Discover</h5>
-                            <p class="text-muted small">View the full restaurant details and all reviews</p>
-                        </div>
-                    </div>
-                </div>
+    
+    <!-- Winner Section -->
+    <div id="winnerSection" class="d-none">
+        <div class="winner-banner">
+            <h2>WINNER!</h2>
+            <p>Your roulette selection!</p>
+        </div>
+        
+        <div class="selected-restaurant">
+            <h4><i class="fas fa-utensils"></i> SELECTED RESTAURANT</h4>
+            <div id="selectedRestaurantContent">
+                <!-- Selected restaurant details will be displayed here -->
             </div>
         </div>
     </div>
 </div>
 
+<!-- Navigation -->
 <div class="text-center mt-4">
-    <a href="/" class="btn btn-outline-primary">
-        <i class="fas fa-list me-2"></i>View Regular Results
+    <a href="/" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i>
+        New Search
     </a>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Global variables
+let restaurantData = null;
+let selectedRestaurant = null;
+let isSpinning = false;
+let currentRotation = 0;
+
+// Check for URL parameters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, checking for URL parameters');
+    const urlParams = new URLSearchParams(window.location.search);
+    const location = urlParams.get('location');
+    const mood = urlParams.get('mood');
+    
+    console.log('URL params - location:', location, 'mood:', mood);
+    
+    if (location && mood) {
+        console.log('Found URL parameters, pre-filling form and searching');
+        // Pre-fill form and search
+        document.getElementById('location').value = location;
+        document.getElementById('customMood').value = mood;
+        searchRestaurants(location, mood);
+    } else {
+        console.log('No URL parameters found, showing search form');
+    }
+});
+
+// Location button handlers
+document.querySelectorAll('.location-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('location').value = this.dataset.location;
+        document.querySelectorAll('.location-btn').forEach(b => b.style.background = '#E91E63');
+        this.style.background = '#C2185B';
+    });
+});
+
+// Mood button handlers
+document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        document.getElementById('customMood').value = '';
+    });
+});
+
+// Custom mood input handler
+document.getElementById('customMood').addEventListener('input', function() {
+    if (this.value.trim()) {
+        document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+    }
+});
+
+// Form submission
 document.getElementById('rouletteSearchForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const location = document.getElementById('location').value.trim();
-    const mood = document.getElementById('mood').value.trim();
+    const customMood = document.getElementById('customMood').value.trim();
+    const selectedMoodBtn = document.querySelector('.mood-btn.selected');
+    const mood = customMood || (selectedMoodBtn ? selectedMoodBtn.dataset.mood : '');
     
     if (!location || !mood) {
         showError('Please enter both location and mood');
         return;
     }
     
+    searchRestaurants(location, mood);
+});
+
+async function searchRestaurants(location, mood) {
     // Show loading
     document.getElementById('loading').style.display = 'block';
     document.getElementById('errorMessage').style.display = 'none';
-    document.getElementById('rouletteContainer').style.display = 'none';
+    document.getElementById('searchSection').style.display = 'none';
+    document.getElementById('rouletteReadySection').style.display = 'none';
+    document.getElementById('winnerSection').style.display = 'none';
     
     try {
         const response = await fetch('/search', {
@@ -136,114 +242,60 @@ document.getElementById('rouletteSearchForm').addEventListener('submit', async f
         document.getElementById('loading').style.display = 'none';
         
         if (data.success) {
-            displayRoulette(data);
+            displayRouletteReady(data);
         } else {
             showError(data.error || 'An error occurred while searching for restaurants');
+            document.getElementById('searchSection').style.display = 'block';
         }
     } catch (error) {
         document.getElementById('loading').style.display = 'none';
         showError('Network error. Please try again.');
+        document.getElementById('searchSection').style.display = 'block';
     }
-});
+}
 
 function showError(message) {
     document.getElementById('errorText').textContent = message;
     document.getElementById('errorMessage').style.display = 'block';
 }
 
-function displayRoulette(data) {
-    const container = document.getElementById('rouletteContainer');
+function displayRouletteReady(data) {
+    restaurantData = data;
     
-    let html = `
-        <div class="success-message">
-            <i class="fas fa-check-circle me-2"></i>
-            Found ${data.total_restaurants} restaurants in ${data.location} matching "${data.mood}" mood
-        </div>
-        
-        <!-- Roulette Container -->
-        <div class="row justify-content-center mb-5">
-            <div class="col-lg-8">
-                <div class="roulette-container">
-                    <div class="roulette-wheel" id="rouletteWheel">
-                        <div class="roulette-center">
-                            <i class="fas fa-utensils fa-3x"></i>
-                        </div>
-                        <div class="roulette-sections" id="rouletteSections">
-                            <!-- Roulette sections will be generated by JavaScript -->
-                        </div>
-                    </div>
-                    <div class="roulette-controls">
-                        <button class="btn btn-success btn-lg" id="spinButton" onclick="spinRoulette()">
-                            <i class="fas fa-play me-2"></i>Spin the Roulette!
-                        </button>
-                        <p class="mt-3 text-muted">Click to spin and discover a random restaurant review!</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Selected Review Display -->
-        <div class="row justify-content-center" id="selectedReviewContainer" style="display: none;">
-            <div class="col-lg-8">
-                <div class="selected-review-card">
-                    <h4 class="text-center mb-4">
-                        <i class="fas fa-star me-2"></i>Your Selected Review
-                    </h4>
-                    <div id="selectedReviewContent">
-                        <!-- Selected review will be displayed here -->
-                    </div>
-                    <div class="text-center mt-4">
-                        <button class="btn btn-primary" onclick="showRestaurantCard()">
-                            <i class="fas fa-utensils me-2"></i>View Full Restaurant
-                        </button>
-                        <button class="btn btn-outline-secondary ms-2" onclick="spinAgain()">
-                            <i class="fas fa-redo me-2"></i>Spin Again
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Restaurant Card Display -->
-        <div class="row justify-content-center" id="restaurantCardContainer" style="display: none;">
-            <div class="col-lg-10">
-                <div id="restaurantCardContent">
-                    <!-- Full restaurant card will be displayed here -->
-                </div>
-            </div>
-        </div>
-    `;
+    // Update banner text
+    document.getElementById('restaurantCount').textContent = data.total_restaurants;
+    document.getElementById('searchLocation').textContent = data.location;
+    document.getElementById('searchMood').textContent = data.mood;
+    document.getElementById('tableCount').textContent = data.total_restaurants;
     
-    container.innerHTML = html;
-    container.style.display = 'block';
+    // Create roulette sections
+    createRouletteSections(data.restaurants);
     
-    // Initialize roulette with the data
-    initializeRoulette(data);
+    // Create restaurant options
+    createRestaurantOptions(data.restaurants);
+    
+    // Show roulette ready section
+    document.getElementById('rouletteReadySection').classList.remove('d-none');
 }
 
-// Restaurant data from server
-let restaurantData = null;
-let selectedRestaurant = null;
-let selectedReview = null;
-let isSpinning = false;
-
-// Initialize roulette
-function initializeRoulette(data) {
-    restaurantData = data;
+function createRouletteSections(restaurants) {
+    console.log('createRouletteSections called with:', restaurants);
     const sectionsContainer = document.getElementById('rouletteSections');
-    const restaurants = data.restaurants;
+    console.log('Sections container:', sectionsContainer);
     
-    // Clear previous sections
+    if (!sectionsContainer) {
+        console.error('Roulette sections container not found!');
+        return;
+    }
+    
     sectionsContainer.innerHTML = '';
     
-    // Create sections for each restaurant (one review per restaurant)
     restaurants.forEach((restaurant, index) => {
         const section = document.createElement('div');
         section.className = 'roulette-section';
         section.style.transform = `rotate(${index * (360 / restaurants.length)}deg)`;
         section.style.background = getSectionColor(index);
         
-        // Add restaurant name to section
         const sectionContent = document.createElement('div');
         sectionContent.className = 'section-content';
         sectionContent.innerHTML = `
@@ -253,10 +305,41 @@ function initializeRoulette(data) {
         
         section.appendChild(sectionContent);
         sectionsContainer.appendChild(section);
+        console.log(`Created section for ${restaurant.name}`);
     });
+    
+    console.log(`Created ${restaurants.length} roulette sections`);
 }
 
-// Get color for each section
+function createRestaurantOptions(restaurants) {
+    console.log('createRestaurantOptions called with:', restaurants);
+    const optionsContainer = document.getElementById('restaurantOptions');
+    console.log('Options container:', optionsContainer);
+    
+    if (!optionsContainer) {
+        console.error('Restaurant options container not found!');
+        return;
+    }
+    
+    optionsContainer.innerHTML = '';
+    
+    restaurants.forEach((restaurant, index) => {
+        const option = document.createElement('div');
+        option.className = 'restaurant-option';
+        option.innerHTML = `
+            <div class="option-number">${index}</div>
+            <div class="option-details">
+                <div class="option-name">${restaurant.name}</div>
+                <div class="option-cuisine">${restaurant.cuisine} • ${restaurant.price_range}</div>
+            </div>
+        `;
+        optionsContainer.appendChild(option);
+        console.log(`Created option for ${restaurant.name}`);
+    });
+    
+    console.log(`Created ${restaurants.length} restaurant options`);
+}
+
 function getSectionColor(index) {
     const colors = [
         'linear-gradient(45deg, #ff6b6b, #ee5a24)',
@@ -273,26 +356,33 @@ function getSectionColor(index) {
     return colors[index % colors.length];
 }
 
-// Spin the roulette
-function spinRoulette() {
-    if (isSpinning || !restaurantData) return;
+// Spin button handler
+document.getElementById('spinButton').addEventListener('click', function() {
+    if (isSpinning) return;
+    
+    // Check if we have restaurant data
+    if (!restaurantData || !restaurantData.restaurants || restaurantData.restaurants.length === 0) {
+        console.error('No restaurant data available for spinning');
+        alert('No restaurants available. Please search for restaurants first.');
+        return;
+    }
     
     isSpinning = true;
-    const spinButton = document.getElementById('spinButton');
+    const spinButton = this;
     const wheel = document.getElementById('rouletteWheel');
     
     // Disable button
     spinButton.disabled = true;
-    spinButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Spinning...';
+    spinButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Spinning...';
     
-    // Hide previous results
-    document.getElementById('selectedReviewContainer').style.display = 'none';
-    document.getElementById('restaurantCardContainer').style.display = 'none';
+    // Hide winner section
+    document.getElementById('winnerSection').classList.add('d-none');
     
     // Random rotation (5-10 full rotations + random angle)
     const fullRotations = 5 + Math.random() * 5;
     const randomAngle = Math.random() * 360;
-    const totalRotation = fullRotations * 360 + randomAngle;
+    const totalRotation = currentRotation + (fullRotations * 360) + randomAngle;
+    currentRotation = totalRotation;
     
     // Apply rotation
     wheel.style.transform = `rotate(${totalRotation}deg)`;
@@ -306,266 +396,320 @@ function spinRoulette() {
         const selectedIndex = Math.floor((360 - finalAngle) / anglePerRestaurant) % restaurants.length;
         
         selectedRestaurant = restaurants[selectedIndex];
-        selectedReview = selectedRestaurant.reviews[0]; // Use first review
         
-        // Show selected review
-        showSelectedReview();
+        console.log('Selected restaurant:', selectedRestaurant);
+        console.log('Selected index:', selectedIndex);
+        console.log('Total rotation:', totalRotation);
+        console.log('Final angle:', finalAngle);
+        console.log('Angle per restaurant:', anglePerRestaurant);
+        
+        // Show winner
+        showWinner();
         
         // Re-enable button
         spinButton.disabled = false;
-        spinButton.innerHTML = '<i class="fas fa-play me-2"></i>Spin Again!';
+        spinButton.innerHTML = '<i class="fas fa-play"></i> Spin Again!';
         isSpinning = false;
     }, 4000);
+});
+
+function showWinner() {
+    console.log('showWinner called with:', selectedRestaurant);
+    
+    // Update restaurant options to highlight winner
+    const options = document.querySelectorAll('.restaurant-option');
+    console.log('Found options:', options.length);
+    
+    options.forEach((option, index) => {
+        option.classList.remove('winner');
+        const optionName = option.querySelector('.option-name');
+        if (optionName && selectedRestaurant.name === optionName.textContent) {
+            option.classList.add('winner');
+            console.log('Highlighted winner option:', optionName.textContent);
+        }
+    });
+    
+    // Show winner section
+    const winnerSection = document.getElementById('winnerSection');
+    console.log('Winner section element:', winnerSection);
+    console.log('Winner section classes before:', winnerSection.className);
+    winnerSection.classList.remove('d-none');
+    console.log('Winner section classes after:', winnerSection.className);
+    console.log('Winner section display style:', window.getComputedStyle(winnerSection).display);
+    
+    // Display selected restaurant details
+    displaySelectedRestaurant();
 }
 
-// Show selected review
-function showSelectedReview() {
-    const container = document.getElementById('selectedReviewContainer');
-    const content = document.getElementById('selectedReviewContent');
+function displaySelectedRestaurant() {
+    console.log('displaySelectedRestaurant called with:', selectedRestaurant);
+    const content = document.getElementById('selectedRestaurantContent');
+    console.log('Content element:', content);
     
-    const stars = '★'.repeat(selectedReview.rating) + '☆'.repeat(5 - selectedReview.rating);
-    
-    content.innerHTML = `
-        <div class="review-card selected">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                    <h5 class="mb-1">${selectedRestaurant.name}</h5>
-                    <div class="d-flex align-items-center">
-                        <span class="rating-stars me-2">${stars}</span>
-                        <span class="badge bg-primary me-2">${selectedRestaurant.cuisine}</span>
-                        <span class="badge bg-secondary">${selectedRestaurant.price_range}</span>
-                    </div>
-                </div>
-                <span class="review-source">${selectedReview.source}</span>
-            </div>
-            <div class="review-content">
-                <p class="review-text">"${selectedReview.text}"</p>
-                <div class="review-meta">
-                    <strong>${selectedReview.user_name}</strong>
-                    <span class="text-muted ms-2">${selectedReview.time_created}</span>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    container.style.display = 'block';
-    container.scrollIntoView({ behavior: 'smooth' });
-}
-
-// Show full restaurant card
-function showRestaurantCard() {
-    const container = document.getElementById('restaurantCardContainer');
-    const content = document.getElementById('restaurantCardContent');
+    if (!selectedRestaurant) {
+        console.error('No selected restaurant to display');
+        return;
+    }
     
     const stars = '★'.repeat(Math.floor(selectedRestaurant.rating)) + '☆'.repeat(5 - Math.floor(selectedRestaurant.rating));
     
     content.innerHTML = `
         <div class="restaurant-card">
             <div class="restaurant-header">
-                <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <h3 class="mb-2">${selectedRestaurant.name}</h3>
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="rating-stars me-3">${stars}</span>
-                            <span class="me-3">${selectedRestaurant.rating}/5</span>
-                            <span class="badge bg-light text-dark">${selectedRestaurant.review_count} reviews</span>
-                        </div>
-                    </div>
-                    <div class="col-md-4 text-end">
-                        <span class="mood-badge">${restaurantData.mood}</span>
-                    </div>
-                </div>
+                <div class="restaurant-name">${selectedRestaurant.name}</div>
+                <div class="price-badge">${selectedRestaurant.price_range}</div>
             </div>
             
-            <div class="restaurant-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="mb-3">
-                            <h5><i class="fas fa-utensils me-2"></i>${selectedRestaurant.cuisine}</h5>
-                            <p class="mb-2"><i class="fas fa-map-marker-alt me-2"></i>${selectedRestaurant.address}</p>
-                            <p class="mb-2"><i class="fas fa-phone me-2"></i>${selectedRestaurant.phone}</p>
-                            <p class="mb-3"><i class="fas fa-dollar-sign me-2"></i>Price Range: ${selectedRestaurant.price_range}</p>
+            <div class="rating">
+                <div class="stars">${stars}</div>
+                <div class="rating-text">${selectedRestaurant.rating} (${selectedRestaurant.review_count})</div>
                         </div>
                         
-                        <div class="mb-3">
-                            <h6><i class="fas fa-tags me-2"></i>Categories:</h6>
-                            <div class="d-flex flex-wrap">
-                                ${selectedRestaurant.categories.map(cat => `<span class="badge bg-secondary me-2 mb-1">${cat}</span>`).join('')}
+            <div class="restaurant-details">
+                <div class="detail-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>${selectedRestaurant.address}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-phone"></i>
+                    <span>${selectedRestaurant.phone}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-utensils"></i>
+                    <span>Cuisine: <span style="color: #FF9800;">${selectedRestaurant.cuisine}</span></span>
                             </div>
+                <div class="detail-item">
+                    <i class="fas fa-heart"></i>
+                    <span>Mood: <span style="color: #2196F3;">${restaurantData.mood}</span></span>
                         </div>
-                        
-                        <div class="mb-3">
-                            <h6><i class="fas fa-heart me-2"></i>Why it matches your mood:</h6>
-                            <p class="text-muted">${selectedRestaurant.mood_match}</p>
+                <div class="detail-item">
+                    <i class="fas fa-star"></i>
+                    <span>Vibe: <span style="color: #4CAF50;">Upscale</span></span>
                         </div>
                     </div>
                     
-                    <div class="col-md-4">
-                        <div class="text-center mb-3">
-                            <img src="${selectedRestaurant.image_url}" alt="${selectedRestaurant.name}" 
-                                 class="img-fluid rounded" style="max-height: 200px; width: 100%; object-fit: cover;">
-                        </div>
-                        <div class="text-center">
-                            <a href="${selectedRestaurant.url}" target="_blank" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-external-link-alt me-2"></i>View on Yelp
-                            </a>
-                        </div>
-                    </div>
+            <div class="restaurant-description">
+                <p>${selectedRestaurant.mood_match}</p>
                 </div>
-                
-                <hr>
                 
                 <div class="reviews-section">
-                    <h5><i class="fas fa-comments me-2"></i>All Customer Reviews</h5>
-                    ${selectedRestaurant.reviews.map(review => `
+                <h5><i class="fas fa-star"></i> Reviews</h5>
                         <div class="review-card">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <strong>${review.user_name}</strong>
-                                    <span class="rating-stars ms-2">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+                    <div class="review-header">
+                        <div class="review-source">Google</div>
+                        <div class="review-date">2024-01-08</div>
                                 </div>
-                                <span class="review-source">${review.source}</span>
-                            </div>
-                            <p class="mb-2">${review.text}</p>
-                            <small class="text-muted">${review.time_created}</small>
-                        </div>
-                    `).join('')}
+                    <div class="review-text">"${selectedRestaurant.reviews[0].text}"</div>
+                    <div class="review-author">— ${selectedRestaurant.reviews[0].user_name}</div>
                 </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="viewFullDetails()">
+                    <i class="fas fa-eye"></i>
+                    SEE FULL DETAILS
+                </button>
+                <button class="btn btn-secondary" onclick="spinAgain()">
+                    <i class="fas fa-redo"></i>
+                    SPIN AGAIN
+                </button>
+                <button class="btn btn-info">
+                    <i class="fas fa-map-marker-alt"></i>
+                    DIRECTIONS
+                </button>
+                <button class="btn btn-info">
+                    <i class="fas fa-phone"></i>
+                    CALL
+                </button>
             </div>
         </div>
     `;
-    
-    container.style.display = 'block';
-    container.scrollIntoView({ behavior: 'smooth' });
 }
 
-// Spin again
+function viewFullDetails() {
+    if (selectedRestaurant) {
+        // Map restaurant names to demo IDs for the details page
+        const restaurantIdMap = {
+            'Jalapeno And Cilantro Grill': 'demo_1',
+            'Ara\'s Hot Chicken': 'demo_2',
+            '蜀世冒菜 S&Y Mini HotPot': 'demo_3'
+        };
+        
+        const restaurantId = restaurantIdMap[selectedRestaurant.name] || 'demo_1';
+        const mood = restaurantData ? restaurantData.mood : 'upscale and elegant';
+        
+        window.location.href = `/restaurant/${restaurantId}?mood=${encodeURIComponent(mood)}`;
+    }
+}
+
 function spinAgain() {
-    document.getElementById('selectedReviewContainer').style.display = 'none';
-    document.getElementById('restaurantCardContainer').style.display = 'none';
-    spinRoulette();
+    document.getElementById('winnerSection').classList.add('d-none');
+    document.getElementById('spinButton').click();
 }
 </script>
 
 <style>
-.roulette-container {
-    text-align: center;
-    padding: 40px 20px;
-}
-
-.roulette-wheel {
-    position: relative;
-    width: 400px;
-    height: 400px;
-    margin: 0 auto 30px;
-    border-radius: 50%;
-    border: 8px solid #fff;
-    box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
-    overflow: hidden;
-    transition: transform 4s cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.roulette-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    z-index: 10;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-}
-
-.roulette-sections {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-.roulette-section {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    top: 0;
-    left: 50%;
-    transform-origin: 0 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.section-content {
-    transform: rotate(45deg);
-    text-align: center;
-    padding: 10px;
-}
-
-.section-text {
-    font-size: 0.9em;
-    line-height: 1.2;
-    margin-bottom: 5px;
-}
-
-.section-rating {
-    font-size: 0.8em;
-    opacity: 0.9;
-}
-
-.roulette-controls {
-    margin-top: 30px;
-}
-
-.selected-review-card {
-    background: white;
+/* Roulette Ready Banner */
+.roulette-ready-banner {
+    background: #2D2D2D;
+    border: 2px solid #4CAF50;
     border-radius: 15px;
     padding: 30px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
     margin-bottom: 30px;
 }
 
-.review-card.selected {
-    background: linear-gradient(135deg, #667eea, #764ba2);
+.roulette-ready-banner h2 {
     color: white;
-    border: none;
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.roulette-ready-banner p {
+    color: #B0B0B0;
+    margin-bottom: 5px;
+}
+
+.roulette-ready-banner .instruction {
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+/* Roulette Table */
+.roulette-table {
+    background: #2D2D2D;
+    border: 2px solid #4CAF50;
     border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    padding: 30px;
+    margin-top: 30px;
 }
 
-.review-card.selected .rating-stars {
-    color: #ffc107;
+.roulette-table h3 {
+    color: white;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
 }
 
-.review-card.selected .badge {
-    background: rgba(255, 255, 255, 0.2) !important;
-    color: white !important;
+.roulette-table h3 i {
+    color: #E91E63;
+    margin-right: 10px;
 }
 
-.review-card.selected .text-muted {
-    color: rgba(255, 255, 255, 0.8) !important;
+.restaurant-option {
+    background: #1A1A1A;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
 }
 
-.review-text {
-    font-size: 1.1em;
+.restaurant-option.winner {
+    background: #FFD700;
+    color: #1A1A1A;
+    font-weight: 600;
+}
+
+.option-number {
+    background: #4CAF50;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 15px;
+}
+
+.restaurant-option.winner .option-number {
+    background: #E91E63;
+}
+
+.option-details {
+    flex: 1;
+}
+
+.option-name {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.option-cuisine {
+    color: #B0B0B0;
+    font-size: 0.9rem;
+}
+
+/* Winner Section */
+.winner-banner {
+    background: linear-gradient(135deg, #FFD700, #FFA000);
+    color: #1A1A1A;
+    text-align: center;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+}
+
+.winner-banner h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.winner-banner p {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.selected-restaurant {
+    background: #2D2D2D;
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+.selected-restaurant h4 {
+    color: #B0B0B0;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.selected-restaurant h4 i {
+    color: #E91E63;
+    margin-right: 10px;
+}
+
+.restaurant-description {
+    background: #1A1A1A;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
     font-style: italic;
-    line-height: 1.6;
+    color: #B0B0B0;
+}
+
+.reviews-section h5 {
+    color: #FFD700;
     margin-bottom: 15px;
+    display: flex;
+    align-items: center;
 }
 
-.review-meta {
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    padding-top: 15px;
+.reviews-section h5 i {
+    margin-right: 10px;
 }
 
+.review-date {
+    color: #B0B0B0;
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .roulette-wheel {
         width: 300px;
@@ -578,6 +722,14 @@ function spinAgain() {
     
     .section-rating {
         font-size: 0.7em;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .winner-banner h2 {
+        font-size: 2rem;
     }
 }
 </style>
