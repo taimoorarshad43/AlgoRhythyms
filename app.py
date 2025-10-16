@@ -278,7 +278,7 @@ def demo():
         'timestamp': '2025-01-18T00:30:00'
     }
     
-    return render_template('results.html', data=sample_data)
+    return render_template('demo_multiplayer.html', data=sample_data)
 
 @app.route('/restaurant/<restaurant_id>')
 def restaurant_details(restaurant_id):
