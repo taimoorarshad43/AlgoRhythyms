@@ -63,7 +63,7 @@
             <h2><i class="fas fa-globe"></i> Shared Roulette Table</h2>
             <p>Found <span class="highlight">3</span> restaurants in <span class="highlight">Somerset, NJ</span> matching '<span class="highlight">spicy and exciting</span>' mood</p>
             <div class="session-info">
-                <span class="session-id">Session: #RRL-8A9B2F</span>
+                <span class="session-id">Session: #RRL-{{ data.room_id if data else '8A9B2F' }}</span>
                 <span class="player-count">4 players connected</span>
             </div>
         </div>
@@ -122,7 +122,7 @@
             <div class="session-item">
                 <i class="fas fa-door-open"></i>
                 <div class="session-label">Lobby ID</div>
-                <div class="session-value" id="lobbyId">#RRL-8A9B2F</div>
+                <div class="session-value" id="lobbyId">#RRL-{{ data.room_id if data else '8A9B2F' }}</div>
             </div>
             <div class="session-item">
                 <i class="fas fa-clock"></i>
@@ -531,21 +531,35 @@ const demoRestaurants = [
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Multiplayer demo loaded');
     
-    // Set up the roulette
-    restaurantData = {
-        success: true,
-        location: 'Somerset, NJ',
-        mood: 'spicy and exciting',
-        total_restaurants: demoRestaurants.length,
-        restaurants: demoRestaurants,
-        timestamp: new Date().toISOString()
-    };
+    // Set up the roulette with session data if available
+    const sessionData = {{ data | tojson if data else 'null' }};
+    
+    if (sessionData) {
+        restaurantData = {
+            success: true,
+            location: sessionData.location,
+            mood: sessionData.mood,
+            total_restaurants: sessionData.total_restaurants,
+            restaurants: sessionData.restaurants,
+            timestamp: sessionData.timestamp
+        };
+    } else {
+        // Fallback to demo data
+        restaurantData = {
+            success: true,
+            location: 'Somerset, NJ',
+            mood: 'spicy and exciting',
+            total_restaurants: demoRestaurants.length,
+            restaurants: demoRestaurants,
+            timestamp: new Date().toISOString()
+        };
+    }
     
     // Create roulette sections
-    createRouletteSections(demoRestaurants);
+    createRouletteSections(restaurantData.restaurants);
     
     // Create restaurant options
-    createRestaurantOptions(demoRestaurants);
+    createRestaurantOptions(restaurantData.restaurants);
     
     // Set up spin button
     document.getElementById('spinButton').addEventListener('click', function() {
@@ -558,8 +572,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('copyLobbyBtn').addEventListener('click', copyLobbyId);
     document.getElementById('inviteBtn').addEventListener('click', inviteFriends);
     
-    // Generate random lobby ID on page load
-    document.getElementById('lobbyId').textContent = generateLobbyId();
+    // Update lobby ID if not already set by template
+    const lobbyElement = document.getElementById('lobbyId');
+    if (lobbyElement && !lobbyElement.textContent.includes('RRL-')) {
+        lobbyElement.textContent = generateLobbyId();
+    }
 });
 
 function createRouletteSections(restaurants) {

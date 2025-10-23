@@ -103,6 +103,19 @@
             SPIN ROULETTE!
         </button>
     </form>
+    
+    <!-- Multiplayer Section -->
+    <div class="multiplayer-section">
+        <div class="divider">
+            <span>OR</span>
+        </div>
+        <h3 class="multiplayer-title">Play with Friends!</h3>
+        <p class="multiplayer-subtitle">Create a multiplayer session and spin together</p>
+        <button class="action-btn multiplayer-btn" onclick="goToMultiplayer()">
+            <i class="fas fa-users"></i>
+            START MULTIPLAYER SESSION
+        </button>
+    </div>
         
         <!-- Loading indicator -->
         <div class="loading" id="loading">
@@ -583,6 +596,76 @@
     animation: pulse 2s ease-in-out infinite;
 }
 
+/* Multiplayer Section */
+.multiplayer-section {
+    text-align: center;
+    margin: 40px 0;
+    padding: 30px;
+    background: linear-gradient(135deg, #1A1A1A, #2A2A2A);
+    border-radius: 15px;
+    border: 2px solid #4CAF50;
+}
+
+.divider {
+    position: relative;
+    margin: 20px 0 30px;
+    text-align: center;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #4CAF50, transparent);
+}
+
+.divider span {
+    background: #1A1A1A;
+    padding: 0 20px;
+    color: #4CAF50;
+    font-weight: 600;
+    font-size: 0.9rem;
+    position: relative;
+    z-index: 1;
+}
+
+.multiplayer-title {
+    color: #4CAF50;
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.multiplayer-subtitle {
+    color: #B0B0B0;
+    margin-bottom: 25px;
+    font-size: 1.1rem;
+}
+
+.multiplayer-btn {
+    background: linear-gradient(135deg, #4CAF50, #45A049);
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-radius: 25px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.multiplayer-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+    background: linear-gradient(135deg, #45A049, #4CAF50);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .roulette-wheel {
@@ -609,6 +692,15 @@
     
     .winner-banner h2 {
         font-size: 2rem;
+    }
+    
+    .multiplayer-title {
+        font-size: 1.5rem;
+    }
+    
+    .multiplayer-btn {
+        font-size: 1rem;
+        padding: 12px 24px;
     }
 }
 </style>
@@ -1041,5 +1133,10 @@ function newSearch() {
     }
     
 }); // End of DOMContentLoaded
+
+// Multiplayer navigation function
+function goToMultiplayer() {
+    window.location.href = '/multiplayer';
+}
 </script>
 {% endblock %}

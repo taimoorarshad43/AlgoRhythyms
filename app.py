@@ -15,8 +15,12 @@ load_dotenv()
 from food_restaurant_vibe import get_restaurants_by_mood
 import asyncio
 from restaurant_mood_azureai import RestaurantMoodAI
+from services.session_generator import generate_room_id
 
 app = Flask(__name__)
+
+# In-memory store for existing rooms (in production, use a database)
+existing_rooms = set()
 
 def convert_azure_to_ui_format(azure_result):
     """Convert Azure AI result to UI-compatible format."""
@@ -140,6 +144,101 @@ def search_restaurants():
 def roulette_search():
     """Roulette search page with location and mood input."""
     return render_template('roulette_search.html')
+
+@app.route('/multiplayer')
+def multiplayer():
+    """Multiplayer page with new session generation."""
+    # Generate a new room ID
+    room_id = generate_room_id(existing_rooms)
+    existing_rooms.add(room_id)
+    
+    # Sample data for the multiplayer session
+    session_data = {
+        'room_id': room_id,
+        'location': 'Somerset, NJ',
+        'mood': 'spicy and exciting',
+        'total_restaurants': 3,
+        'restaurants': [
+            {
+                'id': 'demo_1',
+                'name': 'Jalapeno And Cilantro Grill',
+                'cuisine': 'Mexican',
+                'price_range': '$$',
+                'rating': 4.8,
+                'review_count': 44,
+                'address': '28 S Main St Milltown, NJ 08850',
+                'phone': '+1-732-555-0123',
+                'url': 'https://yelp.com/biz/jalapeno-cilantro-grill',
+                'image_url': 'https://via.placeholder.com/300x200?text=Mexican+Restaurant',
+                'coordinates': {'latitude': 40.4567, 'longitude': -74.4432},
+                'categories': ['Mexican', 'Restaurants'],
+                'mood_match': 'Mexican cuisine is known for its spicy dishes, offering an exciting flavor profile.',
+                'reviews': [
+                    {
+                        'user_name': 'Sarah M.',
+                        'rating': 5,
+                        'text': 'Amazing spicy tacos! The atmosphere is electric and the food is incredibly flavorful. Perfect for a spicy food adventure!',
+                        'source': 'Google Reviews',
+                        'url': 'https://google.com/reviews/demo1',
+                        'time_created': '2025-01-15'
+                    }
+                ]
+            },
+            {
+                'id': 'demo_2',
+                'name': 'Ara\'s Hot Chicken',
+                'cuisine': 'Halal',
+                'price_range': '$$',
+                'rating': 4.7,
+                'review_count': 31,
+                'address': '323 Raritan Ave Highland Park, NJ 08904',
+                'phone': '+1-732-555-0456',
+                'url': 'https://yelp.com/biz/aras-hot-chicken',
+                'image_url': 'https://via.placeholder.com/300x200?text=Hot+Chicken',
+                'coordinates': {'latitude': 40.4989, 'longitude': -74.4247},
+                'categories': ['Halal', 'Chicken', 'Restaurants'],
+                'mood_match': 'The name itself suggests spicy chicken, implying an exciting and flavorful experience.',
+                'reviews': [
+                    {
+                        'user_name': 'Ahmed H.',
+                        'rating': 5,
+                        'text': 'Best hot chicken in the area! The spice levels are perfect and the chicken is always crispy and juicy.',
+                        'source': 'Google Reviews',
+                        'url': 'https://google.com/reviews/demo2',
+                        'time_created': '2025-01-12'
+                    }
+                ]
+            },
+            {
+                'id': 'demo_3',
+                'name': '蜀世冒菜 S&Y Mini HotPot',
+                'cuisine': 'Hot Pot',
+                'price_range': '$$',
+                'rating': 4.7,
+                'review_count': 26,
+                'address': '1644 NJ-27 Edison, NJ 08817',
+                'phone': '+1-732-555-0789',
+                'url': 'https://yelp.com/biz/sy-mini-hotpot',
+                'image_url': 'https://via.placeholder.com/300x200?text=Szechuan+Hot+Pot',
+                'coordinates': {'latitude': 40.5187, 'longitude': -74.4121},
+                'categories': ['Hot Pot', 'Chinese', 'Restaurants'],
+                'mood_match': 'Szechuan hot pot is known for its intense spiciness and interactive dining experience, making it exciting.',
+                'reviews': [
+                    {
+                        'user_name': 'David W.',
+                        'rating': 5,
+                        'text': 'Authentic Szechuan hot pot with incredible spice levels. The interactive cooking experience is so much fun!',
+                        'source': 'Google Reviews',
+                        'url': 'https://google.com/reviews/demo3',
+                        'time_created': '2025-01-14'
+                    }
+                ]
+            }
+        ],
+        'timestamp': '2025-01-18T00:30:00'
+    }
+    
+    return render_template('demo_multiplayer.html', data=session_data)
 
 @app.route('/demo')
 def demo():
