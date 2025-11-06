@@ -233,15 +233,17 @@ class RestaurantMoodAI:
         
         print(f"✅ Found {len(restaurants)} restaurants\n")
         
-        # Get reviews for each restaurant
-        print("📝 Fetching 1 review for each restaurant...\n")
-        restaurant_reviews = []
+        # Get reviews for each restaurant IN PARALLEL (much faster!)
+        print("📝 Fetching 1 review for each restaurant in parallel...\n")
         
-        for restaurant in restaurants:
-            review_result = await asyncio.to_thread(
-                self.get_restaurant_reviews, restaurant, review_agent_id
-            )
-            restaurant_reviews.append(review_result)
+        # Create all review tasks at once
+        review_tasks = [
+            asyncio.to_thread(self.get_restaurant_reviews, restaurant, review_agent_id)
+            for restaurant in restaurants
+        ]
+        
+        # Run all tasks concurrently
+        restaurant_reviews = await asyncio.gather(*review_tasks)
         
         # Add reviews to the result
         result["restaurants"] = restaurants
