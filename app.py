@@ -3,12 +3,18 @@
 Flask app for serving restaurant recommendations with mood-based search.
 """
 
+# IMPORTANT: Use gevent for WebSocket support
+# Gevent requires monkey-patching but is more compatible than eventlet
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import json
 import re
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
@@ -19,13 +25,19 @@ load_dotenv()
 
 # Import our restaurant recommendation function
 from food_restaurant_vibe import get_restaurants_by_mood
-import asyncio
+# Note: asyncio may conflict with eventlet, only import if needed
+# import asyncio
 from services.session_generator import generate_room_id
+from services.lobby_manager import lobby_manager
 
 app = Flask(__name__, static_folder='frontend/dist', static_url_path='')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Enable CORS for all routes
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Initialize SocketIO with gevent (supports WebSockets)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # In-memory store for existing rooms (in production, use a database)
 existing_rooms = set()
@@ -91,8 +103,8 @@ def call_new_azure_agent(location: str, mood: str):
         # Create a new thread
         thread = project.agents.threads.create()
         
-        # Create user message with location and mood
-        user_message = f"Find restaurants in {location} that match a {mood} mood."
+        # Create user message with location and mood - explicitly request reviews
+        user_message = f"Find 6 restaurants in {location} that match a {mood} mood. Include 2 real reviews for each restaurant with reviewer names and source URLs."
         
         message = project.agents.messages.create(
             thread_id=thread.id,
@@ -134,6 +146,17 @@ def call_new_azure_agent(location: str, mood: str):
         
         # Extract JSON from the response
         json_data = extract_json_from_text(assistant_response)
+        
+        # Debug logging to help diagnose review issues
+        if json_data:
+            print(f"[DEBUG] Successfully extracted JSON with {len(json_data) if isinstance(json_data, list) else 'object'} items")
+            if isinstance(json_data, list) and len(json_data) > 0:
+                first_restaurant = json_data[0]
+                has_reviews = "reviews" in first_restaurant if isinstance(first_restaurant, dict) else False
+                print(f"[DEBUG] First restaurant has reviews field: {has_reviews}")
+                if has_reviews and isinstance(first_restaurant, dict):
+                    reviews_count = len(first_restaurant.get("reviews", []))
+                    print(f"[DEBUG] First restaurant has {reviews_count} reviews")
         
         if json_data:
             return {
@@ -200,36 +223,63 @@ def convert_azure_to_ui_format(azure_result):
         reviews = []
         reviews_data = restaurant_data.get("reviews", [])
         
+        # Try multiple possible keys for reviews
+        if not reviews_data:
+            reviews_data = restaurant_data.get("review", restaurant_data.get("review_list", []))
+        
         if isinstance(reviews_data, list):
             for review_item in reviews_data:
                 if isinstance(review_item, dict):
-                    review_text = review_item.get("text", review_item.get("review", review_item.get("content", "")))
-                    reviewer_name = review_item.get("user_name", review_item.get("reviewer", review_item.get("name", "Anonymous")))
-                    review_url = review_item.get("url", review_item.get("source_url", "https://google.com"))
-                    review_rating = review_item.get("rating", 4)
+                    # Try multiple possible keys for review text
+                    review_text = (review_item.get("text") or 
+                                 review_item.get("review") or 
+                                 review_item.get("content") or 
+                                 review_item.get("review_text") or
+                                 review_item.get("snippet") or "")
                     
-                    if review_text:
+                    # Try multiple possible keys for reviewer name
+                    reviewer_name = (review_item.get("user_name") or 
+                                    review_item.get("reviewer") or 
+                                    review_item.get("name") or 
+                                    review_item.get("author") or
+                                    review_item.get("reviewer_name") or
+                                    "Anonymous")
+                    
+                    # Try multiple possible keys for URL
+                    review_url = (review_item.get("url") or 
+                                review_item.get("source_url") or 
+                                review_item.get("link") or
+                                review_item.get("source") or
+                                restaurant_data.get("url", "https://google.com"))
+                    
+                    review_rating = review_item.get("rating", review_item.get("review_rating", 4))
+                    
+                    if review_text and len(review_text.strip()) > 0:
                         reviews.append({
                             "user_name": reviewer_name,
-                            "rating": review_rating,
-                            "text": review_text,
+                            "rating": float(review_rating) if review_rating else 4,
+                            "text": review_text.strip(),
                             "source": "Restaurant Review",
                             "url": review_url,
-                            "time_created": review_item.get("date", review_item.get("time_created", datetime.now().strftime("%Y-%m-%d")))
+                            "time_created": (review_item.get("date") or 
+                                           review_item.get("time_created") or 
+                                           review_item.get("created_at") or
+                                           datetime.now().strftime("%Y-%m-%d"))
                         })
-                elif isinstance(review_item, str):
+                elif isinstance(review_item, str) and len(review_item.strip()) > 0:
                     # If review is just a string
                     reviews.append({
                         "user_name": "Customer Review",
                         "rating": 4,
-                        "text": review_item,
+                        "text": review_item.strip(),
                         "source": "Restaurant Review",
                         "url": restaurant_data.get("url", "https://google.com"),
                         "time_created": datetime.now().strftime("%Y-%m-%d")
                     })
         
-        # If no reviews found, add a default one
+        # If no reviews found, add a default one (but log it for debugging)
         if not reviews:
+            print(f"[WARNING] No reviews found for restaurant: {name}")
             reviews.append({
                 "user_name": "Customer Review",
                 "rating": 4,
@@ -303,6 +353,226 @@ def search_restaurants():
             'error': f'Server error: {str(e)}'
         }), 500
 
+@app.route('/api/lobby/create', methods=['POST'])
+def create_lobby():
+    """Create a new lobby and return the lobby ID."""
+    try:
+        data = request.get_json()
+        host_id = data.get('host_id')
+        
+        if not host_id:
+            return jsonify({
+                'success': False,
+                'error': 'host_id is required'
+            }), 400
+        
+        # Generate unique lobby ID
+        lobby_id = generate_room_id(existing_rooms)
+        existing_rooms.add(lobby_id)
+        
+        # Create lobby
+        lobby = lobby_manager.create_lobby(lobby_id, host_id)
+        
+        return jsonify({
+            'success': True,
+            'lobby_id': lobby_id,
+            'host_id': host_id
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error creating lobby: {str(e)}'
+        }), 500
+
+@app.route('/api/lobby/join', methods=['POST'])
+def join_lobby():
+    """Join an existing lobby."""
+    try:
+        print(f"[DEBUG] Join lobby request received")
+        data = request.get_json()
+        print(f"[DEBUG] Request data: {data}")
+        
+        lobby_id = data.get('lobby_id', '').strip().upper()
+        player_id = data.get('player_id')
+        
+        if not lobby_id:
+            print(f"[DEBUG] Missing lobby_id")
+            return jsonify({
+                'success': False,
+                'error': 'Lobby ID is required'
+            }), 400
+        
+        if not player_id:
+            print(f"[DEBUG] Missing player_id")
+            return jsonify({
+                'success': False,
+                'error': 'player_id is required'
+            }), 400
+        
+        print(f"[DEBUG] Attempting to join lobby {lobby_id} with player {player_id}")
+        success, lobby, error = lobby_manager.join_lobby(lobby_id, player_id)
+        print(f"[DEBUG] Join result: success={success}, error={error}")
+        
+        if success:
+            print(f"[DEBUG] Successfully joined lobby, returning response")
+            return jsonify({
+                'success': True,
+                'lobby_id': lobby_id,
+                'is_host': lobby.host_id == player_id,
+                'player_count': len(lobby.players),
+                'restaurants': lobby.restaurants,
+                'selected_restaurant': lobby.selected_restaurant,
+                'location': lobby.location,
+                'mood': lobby.mood
+            })
+        else:
+            print(f"[DEBUG] Failed to join: {error}")
+            return jsonify({
+                'success': False,
+                'error': error or 'Failed to join lobby'
+            }), 400
+    except Exception as e:
+        print(f"[DEBUG] Exception in join_lobby: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Error joining lobby: {str(e)}'
+        }), 500
+
+@app.route('/api/lobby/<lobby_id>/info', methods=['GET'])
+def get_lobby_info(lobby_id):
+    """Get lobby information."""
+    try:
+        info = lobby_manager.get_lobby_info(lobby_id.upper())
+        if info:
+            return jsonify({
+                'success': True,
+                **info
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Lobby not found'
+            }), 404
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error getting lobby info: {str(e)}'
+        }), 500
+
+# WebSocket Events
+@socketio.on('connect')
+def handle_connect():
+    """Handle client connection."""
+    emit('connected', {'message': 'Connected to server'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client disconnection."""
+    pass
+
+@socketio.on('join_lobby')
+def handle_join_lobby(data):
+    """Handle client joining a lobby room."""
+    lobby_id = data.get('lobby_id', '').upper()
+    player_id = data.get('player_id', request.sid)
+    
+    if not lobby_id:
+        emit('error', {'message': 'Lobby ID required'})
+        return
+    
+    lobby = lobby_manager.get_lobby(lobby_id)
+    if not lobby:
+        emit('error', {'message': 'Lobby not found'})
+        return
+    
+    # Join the SocketIO room
+    join_room(lobby_id)
+    
+    # Add player to lobby if not already there
+    if player_id not in lobby.players:
+        success, lobby, error = lobby_manager.join_lobby(lobby_id, player_id)
+        if not success:
+            emit('error', {'message': error or 'Failed to join lobby'})
+            return
+    
+    # Notify others in the lobby
+    emit('player_joined', {
+        'player_id': player_id,
+        'player_count': len(lobby.players)
+    }, room=lobby_id, include_self=False)
+    
+    # Send current lobby state to the joining player
+    emit('lobby_state', {
+        'restaurants': lobby.restaurants,
+        'selected_restaurant': lobby.selected_restaurant,
+        'location': lobby.location,
+        'mood': lobby.mood,
+        'is_host': lobby.host_id == player_id
+    })
+
+@socketio.on('leave_lobby')
+def handle_leave_lobby(data):
+    """Handle client leaving a lobby room."""
+    lobby_id = data.get('lobby_id', '').upper()
+    player_id = data.get('player_id', request.sid)
+    
+    if lobby_id:
+        leave_room(lobby_id)
+        lobby_manager.leave_lobby(lobby_id, player_id)
+        
+        lobby = lobby_manager.get_lobby(lobby_id)
+        if lobby:
+            emit('player_left', {
+                'player_id': player_id,
+                'player_count': len(lobby.players)
+            }, room=lobby_id)
+
+@socketio.on('host_spin')
+def handle_host_spin(data):
+    """Handle host spinning the roulette."""
+    lobby_id = data.get('lobby_id', '').upper()
+    host_id = data.get('host_id', request.sid)
+    restaurants = data.get('restaurants', [])
+    selected_restaurant = data.get('selected_restaurant')
+    location = data.get('location', '')
+    mood = data.get('mood', '')
+    
+    if not lobby_id:
+        emit('error', {'message': 'Lobby ID required'})
+        return
+    
+    # Verify this is the host
+    lobby = lobby_manager.get_lobby(lobby_id)
+    if not lobby:
+        emit('error', {'message': 'Lobby not found'})
+        return
+    
+    if lobby.host_id != host_id:
+        emit('error', {'message': 'Only the host can spin'})
+        return
+    
+    # Update lobby state
+    success, error = lobby_manager.update_lobby_state(
+        lobby_id, host_id,
+        restaurants=restaurants,
+        selected_restaurant=selected_restaurant,
+        location=location,
+        mood=mood
+    )
+    
+    if success:
+        # Broadcast to all players in the lobby
+        socketio.emit('spin_result', {
+            'restaurants': restaurants,
+            'selected_restaurant': selected_restaurant,
+            'location': location,
+            'mood': mood
+        }, room=lobby_id)
+    else:
+        emit('error', {'message': error or 'Failed to update lobby state'})
+
 # Catch-all route to serve React app for client-side routing
 @app.route('/<path:path>')
 def serve_react_app(path):
@@ -314,4 +584,4 @@ def serve_react_app(path):
     return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

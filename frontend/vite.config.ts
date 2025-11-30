@@ -61,6 +61,12 @@
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Proxy Socket.IO connections to Flask
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        ws: true, // Enable WebSocket proxying
+      },
     },
   },
   });

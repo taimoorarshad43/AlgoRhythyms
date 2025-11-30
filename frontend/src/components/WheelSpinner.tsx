@@ -3,6 +3,7 @@ import { MapPin, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
+import { Socket } from 'socket.io-client';
 
 interface WheelSpinnerProps {
   location: string;
@@ -16,6 +17,10 @@ interface WheelSpinnerProps {
   isSpinning: boolean;
   setIsSpinning: (spinning: boolean) => void;
   playerName?: string;
+  isHost?: boolean;
+  lobbyId?: string;
+  playerId?: string;
+  socket?: Socket | null;
 }
 
 export function WheelSpinner({
@@ -30,6 +35,10 @@ export function WheelSpinner({
   isSpinning,
   setIsSpinning,
   playerName,
+  isHost = false,
+  lobbyId,
+  playerId,
+  socket,
 }: WheelSpinnerProps) {
   const [rotation, setRotation] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +86,20 @@ export function WheelSpinner({
       setTimeout(() => {
         if (fetchedRestaurants.length > 0) {
           const index = Math.floor(Math.random() * fetchedRestaurants.length);
-          setSelectedRestaurant(fetchedRestaurants[index]);
+          const selected = fetchedRestaurants[index];
+          setSelectedRestaurant(selected);
+          
+          // If in multiplayer mode and host, emit the result to all players
+          if (isHost && lobbyId && playerId && socket) {
+            socket.emit('host_spin', {
+              lobby_id: lobbyId,
+              host_id: playerId,
+              restaurants: fetchedRestaurants,
+              selected_restaurant: selected,
+              location: location.trim(),
+              mood: mood.trim(),
+            });
+          }
         }
         setIsSpinning(false);
         setIsLoading(false);
@@ -237,15 +259,24 @@ export function WheelSpinner({
         </div>
 
         <div className="text-center">
+          {isHost === false && lobbyId && (
+            <div className="mb-4 p-4 bg-[#0a0a0a] border border-[#fbbf24]/20 rounded-lg">
+              <p className="text-[#a3a3a3] text-sm">
+                Only the host can spin the roulette. Waiting for host...
+              </p>
+            </div>
+          )}
           <Button
             onClick={handleSpin}
-            disabled={isSpinning || isLoading || !canSpin}
+            disabled={isSpinning || isLoading || !canSpin || (lobbyId && !isHost)}
             className="bg-gradient-to-r from-[#dc2626] to-[#991b1b] hover:from-[#b91c1c] hover:to-[#7f1d1d] text-white px-8 py-6 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#dc2626]/20"
           >
             {isLoading ? '⏳ Loading restaurants...' : isSpinning ? '🎡 Spinning...' : '▶ Spin the Wheel!'}
           </Button>
           <p className="text-[#a3a3a3] text-sm mt-3">
-            Click to spin and discover a random restaurant!
+            {lobbyId && !isHost 
+              ? 'Only the host can spin the roulette'
+              : 'Click to spin and discover a random restaurant!'}
           </p>
         </div>
       </Card>

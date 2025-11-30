@@ -32,6 +32,11 @@ executing==2.2.1
 filelock==3.19.1
 Flask==3.1.2
 Flask-CORS==5.0.0
+Flask-SocketIO==5.3.6
+python-socketio==5.11.0
+eventlet==0.36.1
+gevent==24.2.1
+gevent-websocket==0.10.1
 flatbuffers==25.2.10
 frozenlist==1.7.0
 fsspec==2025.9.0

@@ -126,7 +126,7 @@ if __name__ == "__main__":
 # - A location (example: “NYC”)
 # - A mode describing the restaurant vibe (example: “cozy”, “romantic”, “earthy”, etc.)
 
-# Your task is to ALWAYS return exactly five (5) restaurants that match the user’s location and mode. The user will NOT specify the number — always default to 5.
+# Your task is to ALWAYS return exactly six (6) restaurants that match the user's location and mode. The user will NOT specify the number — always default to 6.
 
 # ---------------------------------------------------------------------
 # HOW TO CALL THE GEMINI TOOL
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
 # 3. Construct the Gemini prompt using this exact template:
 
-#    "Give me five restaurants in {PLACE} that are {MODE} and give me two reviews for each restaurant exactly as they are in quotes (also give the user name and name) and the URL link where you got the reviews (so I can see it as well). Give me the json response."
+#    "Give me six restaurants in {PLACE} that are {MODE} and give me two reviews for each restaurant exactly as they are in quotes (also give the user name and name) and the URL link where you got the reviews (so I can see it as well). Give me the json response."
 
 #    Replace only {PLACE} and {MODE}. Do not change anything else.
 
@@ -157,42 +157,52 @@ if __name__ == "__main__":
 #    }
 
 # ---------------------------------------------------------------------
-# FINAL RESPONSE FORMAT (NO JSON)
+# FINAL RESPONSE FORMAT (JSON REQUIRED)
 # ---------------------------------------------------------------------
 
-# After receiving the tool response, convert the content into a clean, user-friendly, natural paragraph format.
+# After receiving the tool response, you MUST return a valid JSON array with exactly 6 restaurants.
 
-# The final presentation MUST:
+# The JSON structure MUST be:
+# [
+#   {
+#     "name": "Restaurant Name",
+#     "address": "Full Address",
+#     "cuisine": "Cuisine Type",
+#     "price_range": "$",
+#     "rating": 4.5,
+#     "description": "Brief description",
+#     "reviews": [
+#       {
+#         "text": "Exact review text in quotes",
+#         "user_name": "Reviewer Name",
+#         "url": "Source URL",
+#         "rating": 5
+#       },
+#       {
+#         "text": "Second review text in quotes",
+#         "user_name": "Reviewer Name",
+#         "url": "Source URL",
+#         "rating": 4
+#       }
+#     ],
+#     "url": "Restaurant URL if available"
+#   }
+# ]
 
-# - Use paragraphs and bullet points
-# - Be easy for a general user to read and understand
-# - NO JSON, NO code blocks, and NO technical formatting
-# - Include:
-#   • Restaurant name  
-#   • Address  
-#   • Two real reviews written exactly as the original quotes  
-#   • The source URL for each review  
-#   • A short, friendly summary for each restaurant  
-
-# Example formatting style (NOT literal content):
-
-# Restaurant 1 – Name (Address)  
-# • “Quoted review text…” — Reviewer Name (Source URL)  
-# • “Quoted review text…” — Reviewer Name (Source URL)  
-# Short summary about why this restaurant fits the mode.
-
-# Repeat this for all five restaurants.
+# CRITICAL: You MUST include reviews for EVERY restaurant. Each restaurant MUST have at least 2 reviews.
+# If the Gemini tool response doesn't include reviews, you must still structure the response with the reviews field (even if empty).
 
 # ---------------------------------------------------------------------
 # STRICT RULES
 # ---------------------------------------------------------------------
 
-# - DO NOT output JSON to the user. EVER.
+# - ALWAYS return valid JSON. The response must be parseable JSON.
+# - ALWAYS include reviews for each restaurant. Reviews are REQUIRED, not optional.
 # - DO NOT invent reviews. Only use reviews returned by the Gemini tool.
 # - DO NOT alter review text except to fix spacing if necessary.
 # - DO NOT remove the URLs — users must be able to click them.
-# - Your final output must look like a beautifully written guide, not data.
-# - If the Gemini output is malformed, repair it and present it cleanly.
+# - If the Gemini output is malformed, extract what you can and structure it as valid JSON.
+# - Each restaurant MUST have a "reviews" array with at least 2 review objects.
 
 # ---------------------------------------------------------------------
 # OTHER QUESTIONS
