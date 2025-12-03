@@ -476,10 +476,14 @@ def handle_disconnect():
 def handle_join_lobby(data):
     """Handle client joining a lobby room."""
     lobby_id = data.get('lobby_id', '').upper()
-    player_id = data.get('player_id', request.sid)
+    player_id = data.get('player_id')
     
     if not lobby_id:
         emit('error', {'message': 'Lobby ID required'})
+        return
+    
+    if not player_id:
+        emit('error', {'message': 'Player ID required'})
         return
     
     lobby = lobby_manager.get_lobby(lobby_id)
@@ -487,7 +491,7 @@ def handle_join_lobby(data):
         emit('error', {'message': 'Lobby not found'})
         return
     
-    # Join the SocketIO room
+    # Join the SocketIO room first (this is immediate)
     join_room(lobby_id)
     
     # Add player to lobby if not already there
@@ -496,6 +500,8 @@ def handle_join_lobby(data):
         if not success:
             emit('error', {'message': error or 'Failed to join lobby'})
             return
+        # Refresh lobby reference after join
+        lobby = lobby_manager.get_lobby(lobby_id)
     
     # Notify others in the lobby
     emit('player_joined', {
@@ -503,7 +509,14 @@ def handle_join_lobby(data):
         'player_count': len(lobby.players)
     }, room=lobby_id, include_self=False)
     
-    # Send current lobby state to the joining player
+    # Send acknowledgment and current lobby state to the joining player
+    emit('lobby_joined', {
+        'lobby_id': lobby_id,
+        'player_id': player_id,
+        'is_host': lobby.host_id == player_id,
+        'player_count': len(lobby.players)
+    })
+    
     emit('lobby_state', {
         'restaurants': lobby.restaurants,
         'selected_restaurant': lobby.selected_restaurant,
@@ -533,7 +546,7 @@ def handle_leave_lobby(data):
 def handle_host_spin(data):
     """Handle host spinning the roulette."""
     lobby_id = data.get('lobby_id', '').upper()
-    host_id = data.get('host_id', request.sid)
+    host_id = data.get('host_id')
     restaurants = data.get('restaurants', [])
     selected_restaurant = data.get('selected_restaurant')
     location = data.get('location', '')
@@ -541,6 +554,10 @@ def handle_host_spin(data):
     
     if not lobby_id:
         emit('error', {'message': 'Lobby ID required'})
+        return
+    
+    if not host_id:
+        emit('error', {'message': 'Host ID required'})
         return
     
     # Verify this is the host
@@ -553,6 +570,9 @@ def handle_host_spin(data):
         emit('error', {'message': 'Only the host can spin'})
         return
     
+    # Ensure host is in the SocketIO room (in case of reconnection)
+    join_room(lobby_id)
+    
     # Update lobby state
     success, error = lobby_manager.update_lobby_state(
         lobby_id, host_id,
@@ -564,12 +584,13 @@ def handle_host_spin(data):
     
     if success:
         # Broadcast to all players in the lobby
+        # Use socketio.emit to broadcast to the entire room
         socketio.emit('spin_result', {
             'restaurants': restaurants,
             'selected_restaurant': selected_restaurant,
             'location': location,
             'mood': mood
-        }, room=lobby_id)
+        }, room=lobby_id, include_self=True)
     else:
         emit('error', {'message': error or 'Failed to update lobby state'})
 

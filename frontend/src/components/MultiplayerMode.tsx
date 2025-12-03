@@ -96,6 +96,11 @@ export function MultiplayerMode({
       console.log('Server message:', data);
     });
 
+    socket.on('lobby_joined', (data) => {
+      console.log('Successfully joined lobby room:', data);
+      setPlayerCount(data.player_count || 1);
+    });
+
     socket.on('lobby_state', (data) => {
       console.log('Received lobby state:', data);
       if (data.restaurants && data.restaurants.length > 0) {
@@ -182,12 +187,22 @@ export function MultiplayerMode({
         setIsHost(true);
         setLobbyMode('connected');
         
-        // Join the socket room
+        // Join the socket room - wait for connection if needed
         if (socketRef.current) {
-          socketRef.current.emit('join_lobby', {
-            lobby_id: data.lobby_id,
-            player_id: playerIdRef.current,
-          });
+          if (socketRef.current.connected) {
+            socketRef.current.emit('join_lobby', {
+              lobby_id: data.lobby_id,
+              player_id: playerIdRef.current,
+            });
+          } else {
+            // Wait for connection before joining
+            socketRef.current.once('connect', () => {
+              socketRef.current?.emit('join_lobby', {
+                lobby_id: data.lobby_id,
+                player_id: playerIdRef.current,
+              });
+            });
+          }
         }
       } else {
         setError(data.error || 'Failed to create lobby');
@@ -255,12 +270,22 @@ export function MultiplayerMode({
           setMood(data.mood);
         }
         
-        // Join the socket room
+        // Join the socket room - wait for connection if needed
         if (socketRef.current) {
-          socketRef.current.emit('join_lobby', {
-            lobby_id: data.lobby_id,
-            player_id: playerIdRef.current,
-          });
+          if (socketRef.current.connected) {
+            socketRef.current.emit('join_lobby', {
+              lobby_id: data.lobby_id,
+              player_id: playerIdRef.current,
+            });
+          } else {
+            // Wait for connection before joining
+            socketRef.current.once('connect', () => {
+              socketRef.current?.emit('join_lobby', {
+                lobby_id: data.lobby_id,
+                player_id: playerIdRef.current,
+              });
+            });
+          }
         }
       } else {
         setError(data.error || 'Failed to join lobby');
