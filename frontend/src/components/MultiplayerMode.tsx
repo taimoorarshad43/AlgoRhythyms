@@ -49,7 +49,13 @@ export function MultiplayerMode({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const lobbyIdRef = useRef<string>('');
   const playerIdRef = useRef<string>('');
+
+  // Keep lobbyId in a ref so reconnect handlers see the latest value
+  useEffect(() => {
+    lobbyIdRef.current = lobbyId;
+  }, [lobbyId]);
 
   // Generate unique player ID
   useEffect(() => {
@@ -81,10 +87,27 @@ export function MultiplayerMode({
     });
     socketRef.current = socket;
 
+    const rejoinLobbyIfNeeded = () => {
+      const currentLobbyId = lobbyIdRef.current;
+      if (socketRef.current?.connected && currentLobbyId) {
+        console.log('↩️ Rejoining lobby after reconnect:', currentLobbyId);
+        socketRef.current.emit('join_lobby', {
+          lobby_id: currentLobbyId,
+          player_id: playerIdRef.current,
+        });
+      }
+    };
+
     socket.on('connect', () => {
       console.log('✅ Connected to server, socket ID:', socket.id);
       setConnected(true);
       setError(null);
+      rejoinLobbyIfNeeded();
+    });
+
+    socket.on('reconnect', (attempt) => {
+      console.log('🔄 Reconnected to server after attempt:', attempt);
+      rejoinLobbyIfNeeded();
     });
 
     socket.on('disconnect', (reason) => {
@@ -184,6 +207,7 @@ export function MultiplayerMode({
       const data = await response.json();
       if (data.success) {
         setLobbyId(data.lobby_id);
+        lobbyIdRef.current = data.lobby_id;
         setIsHost(true);
         setLobbyMode('connected');
         
@@ -252,6 +276,7 @@ export function MultiplayerMode({
       console.log('Join lobby response:', data);
       if (data.success) {
         setLobbyId(data.lobby_id);
+        lobbyIdRef.current = data.lobby_id;
         setIsHost(data.is_host || false);
         setPlayerCount(data.player_count || 1);
         setLobbyMode('connected');
@@ -317,6 +342,7 @@ export function MultiplayerMode({
     }
     setLobbyMode('create');
     setLobbyId('');
+    lobbyIdRef.current = '';
     setJoinLobbyId('');
     setRestaurants([]);
     setSelectedRestaurant(null);
@@ -457,6 +483,15 @@ export function MultiplayerMode({
             </div>
             <Badge className="bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20">
               {playerCount} {playerCount === 1 ? 'player' : 'players'}
+            </Badge>
+            <Badge
+              className={`${
+                connected
+                  ? 'bg-green-900/40 text-green-300 border border-green-500/30'
+                  : 'bg-red-900/40 text-red-300 border border-red-500/30'
+              }`}
+            >
+              {connected ? 'Connected' : 'Disconnected'}
             </Badge>
           </div>
           <Button

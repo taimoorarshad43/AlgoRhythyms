@@ -41,6 +41,8 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # In-memory store for existing rooms (in production, use a database)
 existing_rooms = set()
+# Track socket session -> lobby/player to handle disconnects cleanly
+socket_sessions = {}
 
 def extract_json_from_text(text: str):
     """
@@ -470,7 +472,22 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection."""
-    pass
+    session_info = socket_sessions.pop(request.sid, None)
+    if session_info:
+        lobby_id = session_info.get('lobby_id')
+        player_id = session_info.get('player_id', request.sid)
+        print(f"[INFO] Socket disconnected: sid={request.sid}, player={player_id}, lobby={lobby_id}")
+        if lobby_id:
+            leave_room(lobby_id)
+            lobby_manager.leave_lobby(lobby_id, player_id)
+            lobby = lobby_manager.get_lobby(lobby_id)
+            if lobby:
+                emit('player_left', {
+                    'player_id': player_id,
+                    'player_count': len(lobby.players)
+                }, room=lobby_id)
+    else:
+        print(f"[INFO] Socket disconnected: sid={request.sid} (no lobby mapping)")
 
 @socketio.on('join_lobby')
 def handle_join_lobby(data):
@@ -493,6 +510,10 @@ def handle_join_lobby(data):
     
     # Join the SocketIO room first (this is immediate)
     join_room(lobby_id)
+    socket_sessions[request.sid] = {
+        'lobby_id': lobby_id,
+        'player_id': player_id,
+    }
     
     # Add player to lobby if not already there
     if player_id not in lobby.players:
@@ -534,6 +555,9 @@ def handle_leave_lobby(data):
     if lobby_id:
         leave_room(lobby_id)
         lobby_manager.leave_lobby(lobby_id, player_id)
+        session_info = socket_sessions.get(request.sid)
+        if session_info and session_info.get('lobby_id') == lobby_id:
+            socket_sessions.pop(request.sid, None)
         
         lobby = lobby_manager.get_lobby(lobby_id)
         if lobby:
