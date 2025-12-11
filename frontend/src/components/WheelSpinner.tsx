@@ -196,36 +196,38 @@ export function WheelSpinner({
         </div>
       )}
 
-      {/* Input Fields - Both Required */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <Card className="p-6 bg-[#1a1a1a] border-2 border-[#fbbf24]/20 hover:border-[#fbbf24]/50 transition-all">
-          <div className="flex flex-col items-center text-center gap-3">
-            <MapPin className="w-12 h-12 text-[#dc2626]" />
-            <h3 className="text-white">Location</h3>
-            <p className="text-[#a3a3a3]">Where do you want to eat?</p>
-            <Input
-              placeholder="Enter location (e.g., New York, NY)"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="mt-2 bg-[#0a0a0a] border-[#fbbf24]/20 text-white placeholder:text-[#a3a3a3] focus:border-[#fbbf24]"
-            />
-          </div>
-        </Card>
+      {/* Input Fields - Only show for host in multiplayer mode */}
+      {(!lobbyId || isHost) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Card className="p-6 bg-[#1a1a1a] border-2 border-[#fbbf24]/20 hover:border-[#fbbf24]/50 transition-all">
+            <div className="flex flex-col items-center text-center gap-3">
+              <MapPin className="w-12 h-12 text-[#dc2626]" />
+              <h3 className="text-white">Location</h3>
+              <p className="text-[#a3a3a3]">Where do you want to eat?</p>
+              <Input
+                placeholder="Enter location (e.g., New York, NY)"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="mt-2 bg-[#0a0a0a] border-[#fbbf24]/20 text-white placeholder:text-[#a3a3a3] focus:border-[#fbbf24]"
+              />
+            </div>
+          </Card>
 
-        <Card className="p-6 bg-[#1a1a1a] border-2 border-[#fbbf24]/20 hover:border-[#fbbf24]/50 transition-all">
-          <div className="flex flex-col items-center text-center gap-3">
-            <Sparkles className="w-12 h-12 text-[#dc2626]" />
-            <h3 className="text-white">Mood</h3>
-            <p className="text-[#a3a3a3]">What's your vibe?</p>
-            <Input
-              placeholder="Enter mood (e.g., Spicy, Cozy, Upscale)"
-              value={mood}
-              onChange={(e) => setMood(e.target.value)}
-              className="mt-2 bg-[#0a0a0a] border-[#fbbf24]/20 text-white placeholder:text-[#a3a3a3] focus:border-[#fbbf24]"
-            />
-          </div>
-        </Card>
-      </div>
+          <Card className="p-6 bg-[#1a1a1a] border-2 border-[#fbbf24]/20 hover:border-[#fbbf24]/50 transition-all">
+            <div className="flex flex-col items-center text-center gap-3">
+              <Sparkles className="w-12 h-12 text-[#dc2626]" />
+              <h3 className="text-white">Mood</h3>
+              <p className="text-[#a3a3a3]">What's your vibe?</p>
+              <Input
+                placeholder="Enter mood (e.g., Spicy, Cozy, Upscale)"
+                value={mood}
+                onChange={(e) => setMood(e.target.value)}
+                className="mt-2 bg-[#0a0a0a] border-[#fbbf24]/20 text-white placeholder:text-[#a3a3a3] focus:border-[#fbbf24]"
+              />
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Roulette Section */}
       <Card className="p-8 bg-[#1a1a1a] border-[#fbbf24]/20">

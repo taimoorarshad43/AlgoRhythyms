@@ -48,6 +48,7 @@ export function MultiplayerMode({
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [playerIds, setPlayerIds] = useState<string[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const lobbyIdRef = useRef<string>('');
   const playerIdRef = useRef<string>('');
@@ -122,6 +123,15 @@ export function MultiplayerMode({
     socket.on('lobby_joined', (data) => {
       console.log('Successfully joined lobby room:', data);
       setPlayerCount(data.player_count || 1);
+      // Add current player to the list
+      if (playerIdRef.current) {
+        setPlayerIds(prev => {
+          if (!prev.includes(playerIdRef.current)) {
+            return [...prev, playerIdRef.current];
+          }
+          return prev;
+        });
+      }
     });
 
     socket.on('lobby_state', (data) => {
@@ -153,11 +163,19 @@ export function MultiplayerMode({
     socket.on('player_joined', (data) => {
       console.log('Player joined:', data);
       setPlayerCount(data.player_count || 1);
+      // Add the new player to the list
+      if (data.player_id && !playerIds.includes(data.player_id)) {
+        setPlayerIds(prev => [...prev, data.player_id]);
+      }
     });
 
     socket.on('player_left', (data) => {
       console.log('Player left:', data);
       setPlayerCount(data.player_count || 1);
+      // Remove the player from the list
+      if (data.player_id) {
+        setPlayerIds(prev => prev.filter(id => id !== data.player_id));
+      }
     });
 
     socket.on('error', (data) => {
@@ -210,6 +228,7 @@ export function MultiplayerMode({
         lobbyIdRef.current = data.lobby_id;
         setIsHost(true);
         setLobbyMode('connected');
+        setPlayerIds([playerIdRef.current]);
         
         // Join the socket room - wait for connection if needed
         if (socketRef.current) {
@@ -280,6 +299,7 @@ export function MultiplayerMode({
         setIsHost(data.is_host || false);
         setPlayerCount(data.player_count || 1);
         setLobbyMode('connected');
+        setPlayerIds([playerIdRef.current]);
         
         // Set existing state if available
         if (data.restaurants && data.restaurants.length > 0) {
@@ -350,6 +370,7 @@ export function MultiplayerMode({
     setMood('');
     setIsHost(false);
     setPlayerCount(1);
+    setPlayerIds([]);
     setError(null);
   };
 
@@ -459,7 +480,7 @@ export function MultiplayerMode({
       {/* Lobby Header */}
       <Card className="p-6 bg-[#1a1a1a] border-[#fbbf24]/20 mb-8">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div>
               <h2 className="text-white flex items-center gap-2">
                 {isHost && <Crown className="w-5 h-5 text-[#fbbf24]" />}
@@ -481,9 +502,6 @@ export function MultiplayerMode({
                 {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
               </Button>
             </div>
-            <Badge className="bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20">
-              {playerCount} {playerCount === 1 ? 'player' : 'players'}
-            </Badge>
             <Badge
               className={`${
                 connected
@@ -491,7 +509,10 @@ export function MultiplayerMode({
                   : 'bg-red-900/40 text-red-300 border border-red-500/30'
               }`}
             >
-              {connected ? 'Connected' : 'Disconnected'}
+              {connected ? '🟢 Connected' : '🔴 Disconnected'}
+            </Badge>
+            <Badge className="bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20">
+              {playerCount} {playerCount === 1 ? 'player' : 'players'}
             </Badge>
           </div>
           <Button
@@ -501,6 +522,44 @@ export function MultiplayerMode({
           >
             Leave Lobby
           </Button>
+        </div>
+        
+        {/* Player List */}
+        <div className="mt-4 pt-4 border-t border-[#fbbf24]/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-4 h-4 text-[#fbbf24]" />
+            <h3 className="text-white text-sm font-semibold">Players in Lobby:</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* Always show current player first */}
+            <Badge
+              className={`${
+                isHost
+                  ? 'bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/50'
+                  : 'bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20'
+              } ring-2 ring-[#fbbf24]/50`}
+            >
+              {isHost && <Crown className="w-3 h-3 mr-1" />}
+              You {isHost ? '(Host)' : ''}
+            </Badge>
+            {/* Show other players if we have them tracked */}
+            {playerIds
+              .filter(id => id !== playerIdRef.current)
+              .map((playerId, index) => (
+                <Badge
+                  key={playerId}
+                  className="bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20"
+                >
+                  Player {index + 2}
+                </Badge>
+              ))}
+            {/* If we don't have full player list but know there are more players */}
+            {playerIds.length === 1 && playerCount > 1 && (
+              <Badge className="bg-[#2a2a2a] text-[#a3a3a3] border border-[#fbbf24]/20">
+                +{playerCount - 1} {playerCount - 1 === 1 ? 'other player' : 'other players'}
+              </Badge>
+            )}
+          </div>
         </div>
       </Card>
 
