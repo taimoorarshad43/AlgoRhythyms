@@ -66,15 +66,17 @@ export function MultiplayerMode({
   // Initialize socket connection
   useEffect(() => {
     // Determine Socket.IO server URL
-    // Since React and Flask run on separate servers:
-    // - React dev server: typically port 3000, 5173, or other
-    // - Flask server: port 5000
-    // Always connect Socket.IO to Flask backend (port 5000)
-    let socketUrl = 'http://localhost:5000';
+    // Use relative URL for production (Render deployment)
+    // In development, Vite proxy will handle routing to Flask backend
+    let socketUrl = window.location.origin;
     
-    // If we're on port 5000, we're likely in production where Flask serves the frontend
-    if (window.location.port === '5000' || !window.location.port) {
-      socketUrl = window.location.origin;
+    // Only use localhost in development if we're explicitly on a dev port
+    // This allows Vite proxy to work in dev while using relative URLs in production
+    if (window.location.hostname === 'localhost' && 
+        window.location.port !== '' && 
+        window.location.port !== '5000') {
+      // In dev with separate frontend/backend, use localhost:5000
+      socketUrl = 'http://localhost:5000';
     }
     
     console.log('🔌 Connecting to Socket.IO server at:', socketUrl);
