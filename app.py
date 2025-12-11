@@ -327,6 +327,19 @@ def index():
     """Serve React app."""
     return send_from_directory(app.static_folder, 'index.html')
 
+# Catch-all route to serve React app for client-side routing
+@app.route('/<path:path>')
+def serve_react_app(path):
+    """Serve React app for client-side routing."""
+    # Check if the path is a file that exists
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    # Otherwise, serve index.html for client-side routing
+    return send_from_directory(app.static_folder, 'index.html')
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+
 @app.route('/api/search', methods=['POST'])
 def search_restaurants():
     """API endpoint: Search for restaurants based on location and mood using Azure AI."""
@@ -617,16 +630,3 @@ def handle_host_spin(data):
         }, room=lobby_id, include_self=True)
     else:
         emit('error', {'message': error or 'Failed to update lobby state'})
-
-# Catch-all route to serve React app for client-side routing
-@app.route('/<path:path>')
-def serve_react_app(path):
-    """Serve React app for client-side routing."""
-    # Check if the path is a file that exists
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    # Otherwise, serve index.html for client-side routing
-    return send_from_directory(app.static_folder, 'index.html')
-
-if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
